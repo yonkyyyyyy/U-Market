@@ -12,6 +12,22 @@ jobs:
     name: Compilar y Ejecutar Pruebas
     runs-on: ubuntu-latest
 
+    # Definimos un contenedor de Base de Datos para que las pruebas funcionen en la nube
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: U-Market
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: 15262005
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
     # 1. Descarga el código del repositorio en la máquina virtual de GitHub
     - name: Checkout del código
@@ -29,6 +45,10 @@ jobs:
     - name: Dar permisos de ejecución a Maven Wrapper
       run: chmod +x ./mvnw
 
-    # 4. Construye el proyecto y ejecuta las pruebas automatizadas
+    # 4. Construye el proyecto y ejecuta las pruebas automatizadas conectándose a la BD de prueba
     - name: Compilar y Testear con Maven
+      env:
+        SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/U-Market
+        SPRING_DATASOURCE_USERNAME: postgres
+        SPRING_DATASOURCE_PASSWORD: 15262005
       run: ./mvnw clean verify
