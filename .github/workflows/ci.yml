@@ -32,6 +32,8 @@ jobs:
     # 1. Descarga el código del repositorio en la máquina virtual de GitHub
     - name: Checkout del código
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     # 2. Instala Java 21 (La versión que usa tu proyecto)
     - name: Configurar Java 21 (Temurin)
@@ -41,14 +43,22 @@ jobs:
         distribution: 'temurin'
         cache: maven # Esto guarda las dependencias para que futuras ejecuciones sean más rápidas
 
+    - name: Cache SonarQube packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.sonar/cache
+        key: ${{ runner.os }}-sonar
+        restore-keys: ${{ runner.os }}-sonar
+
     # 3. Le da permisos de ejecución al archivo de Maven
     - name: Dar permisos de ejecución a Maven Wrapper
       run: chmod +x ./mvnw
 
-    # 4. Construye el proyecto y ejecuta las pruebas automatizadas conectándose a la BD de prueba
-    - name: Compilar y Testear con Maven
+    # 4. Construye el proyecto, ejecuta las pruebas y el análisis de SonarQube
+    - name: Compilar y Testear con Maven y SonarQube
       env:
         SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/U-Market
         SPRING_DATASOURCE_USERNAME: postgres
         SPRING_DATASOURCE_PASSWORD: 15262005
-      run: ./mvnw clean verify
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      run: ./mvnw clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=luisfacz7_U-Market
