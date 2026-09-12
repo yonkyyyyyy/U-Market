@@ -9,3 +9,7 @@ spring:
       ddl-auto: update
     open-in-view: false
     show-sql: true
+
+jwt:
+  secret: ${JWT_SECRET:25d7jmEN6JOU7Jb7wsjb8YkUCdnrZFbM/L6ieishtXOGLXlHGcvrJqgGy+xyoxO1}
+  expiration: 86400000
