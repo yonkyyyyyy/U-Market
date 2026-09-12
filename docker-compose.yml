@@ -1,0 +1,41 @@
+services:
+  postgres-db:
+    image: postgres:16-alpine
+    container_name: umarket_postgres
+    environment:
+      POSTGRES_DB: U-Market
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 15262005
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: umarket_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@umarket.com
+      PGADMIN_DEFAULT_PASSWORD: 15262005
+    ports:
+      - "8080:80"
+    restart: always
+
+  backend-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: umarket_backend
+    ports:
+      - "8081:8080" # El backend se expone en el puerto 8081 porque se uso  el puerto 8080 para pgAdmin
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/U-Market
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: 15262005
+    depends_on:
+      - postgres-db
+    restart: unless-stopped
+
+volumes:
+  pgdata:
