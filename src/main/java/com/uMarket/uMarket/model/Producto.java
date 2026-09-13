@@ -38,4 +38,7 @@ public class Producto {
 	@Column(name = "created_at")
 	private LocalDateTime createdAt;
 
+	@Column(name = "imagen_url", length = 500)
+	private String imagenUrl;
+
 }

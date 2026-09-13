@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record ProductoDto(Long id, String titulo, String descripcion, BigDecimal precio, String estado,
-						  LocalDateTime createdAt, Long usuarioId, String vendedorNombre) {
+						  LocalDateTime createdAt, Long usuarioId, String vendedorNombre, String imagenUrl) {
 
 	public static ProductoDto from(Producto producto) {
 		return new ProductoDto(
@@ -17,6 +17,7 @@ public record ProductoDto(Long id, String titulo, String descripcion, BigDecimal
 				producto.getEstado(),
 				producto.getCreatedAt(),
 				producto.getUsuario().getId(),
-				producto.getUsuario().getNombre());
+				producto.getUsuario().getNombre(),
+				producto.getImagenUrl());
 	}
 }
