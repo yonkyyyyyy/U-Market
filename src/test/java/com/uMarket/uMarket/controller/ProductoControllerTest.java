@@ -147,7 +147,7 @@ class ProductoControllerTest {
 
 	private ProductoDto productoDto() {
 		return new ProductoDto(1L, "Calculadora Casio", "fx-991LA CW", new BigDecimal("89.50"),
-				"DISPONIBLE", null, 1L, "Ana Torres", null, null, null);
+				"DISPONIBLE", null, 1L, "Ana Torres");
 	}
 
 	private Usuario usuario() {

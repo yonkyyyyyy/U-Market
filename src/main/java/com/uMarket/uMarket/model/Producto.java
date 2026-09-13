@@ -38,13 +38,7 @@ public class Producto {
 	@Column(name = "created_at")
 	private LocalDateTime createdAt;
 
-	@Column(name = "imagen_url", length = 500)
-	private String imagenUrl;
-
-	@Column(name = "thumbnail_url", length = 500)
-	private String thumbnailUrl;
-
-	@Column(name = "full_url", length = 500)
-	private String fullUrl;
+	@OneToMany(mappedBy = "producto", cascade = CascadeType.ALL, orphanRemoval = true)
+	private java.util.List<ArchivoMultimedia> archivosMultimedia = new java.util.ArrayList<>();
 
 }

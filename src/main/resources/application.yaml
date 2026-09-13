@@ -1,8 +1,4 @@
 spring:
-  application:
-    name: uMarket
-  profiles:
-    active: local
   datasource:
     url: jdbc:postgresql://localhost:5432/U-Market
     username: postgres
@@ -18,5 +14,7 @@ jwt:
   secret: ${JWT_SECRET:25d7jmEN6JOU7Jb7wsjb8YkUCdnrZFbM/L6ieishtXOGLXlHGcvrJqgGy+xyoxO1}
   expiration: 86400000
 
-storage:
-  provider: local
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:your_cloud_name}
+  api-key: ${CLOUDINARY_API_KEY:your_api_key}
+  api-secret: ${CLOUDINARY_API_SECRET:your_api_secret}
