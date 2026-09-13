@@ -1,0 +1,26 @@
+services:
+  postgres-db:
+    image: postgres:16-alpine
+    container_name: umarket_postgres
+    environment:
+      POSTGRES_DB: U-Market
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 15262005
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: umarket_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@umarket.com
+      PGADMIN_DEFAULT_PASSWORD: 15262005
+    ports:
+      - "8080:80"
+    restart: always
+
+volumes:
+  pgdata:

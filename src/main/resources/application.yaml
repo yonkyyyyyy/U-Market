@@ -1,3 +1,15 @@
 spring:
-  application:
-    name: uMarket
+  datasource:
+    url: jdbc:postgresql://localhost:5432/U-Market
+    username: postgres
+    password: 15262005
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    show-sql: true
+
+jwt:
+  secret: ${JWT_SECRET:25d7jmEN6JOU7Jb7wsjb8YkUCdnrZFbM/L6ieishtXOGLXlHGcvrJqgGy+xyoxO1}
+  expiration: 86400000
