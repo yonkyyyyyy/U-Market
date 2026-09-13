@@ -4,7 +4,7 @@ name: Java CI with Maven
 on:
   push:
     # Agregamos  las ramas del resto del equipo
-    branches: [ "main", "develop", "devOsQa", "backend", "frontend", "ia-datos" ] 
+    branches: [ "main", "develop", "devOsQa", "backend", "fronted", "iaDatos" ]
   pull_request:
     # Crucial: Ahora validará los PRs que el equipo envíe hacia 'develop' y 'main'
     branches: [ "main", "develop" ]
