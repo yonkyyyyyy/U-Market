@@ -4,24 +4,18 @@
     class="flex w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl"
   >
 
-    <!-- ====================================================== -->
-    <!-- PANEL IZQUIERDO -->
-    <!-- ====================================================== -->
 
     <div
       class="relative hidden min-h-[650px] w-1/2 bg-cover bg-center lg:block"
       style="background-image: url('https://images.unsplash.com/photo-1546514714-df0ccc50d7bf?auto=format&fit=crop&w=900&q=80')"
     >
 
-      <!-- Overlay -->
       <div class="absolute inset-0 bg-black/40"></div>
 
-      <!-- Contenido -->
       <div
         class="relative z-10 flex h-full flex-col justify-between p-10 text-white"
       >
 
-        <!-- Branding -->
         <div>
 
           <h1 class="text-5xl font-bold tracking-tight">
@@ -41,7 +35,6 @@
         <!-- Beneficios -->
         <div class="grid grid-cols-3 gap-4 text-center">
 
-          <!-- Beneficio 1 -->
           <div>
 
             <div class="mb-3 flex justify-center">
@@ -72,7 +65,6 @@
 
           </div>
 
-          <!-- Beneficio 2 -->
           <div>
 
             <div class="mb-3 flex justify-center">
@@ -103,7 +95,6 @@
 
           </div>
 
-          <!-- Beneficio 3 -->
           <div>
 
             <div class="mb-3 flex justify-center">
@@ -141,16 +132,12 @@
     </div>
 
 
-    <!-- ====================================================== -->
-    <!-- PANEL DERECHO -->
-    <!-- ====================================================== -->
+
 
     <div class="w-full p-8 sm:p-10 lg:w-1/2 lg:p-12">
 
 
-      <!-- ================================================== -->
-      <!-- LOGIN -->
-      <!-- ================================================== -->
+
 
       @if (currentView === 'login') {
 
@@ -169,7 +156,6 @@
         </div>
 
 
-        <!-- Google -->
 
         <button
           type="button"
@@ -205,7 +191,6 @@
         </button>
 
 
-        <!-- Separador -->
 
         <div class="my-6 flex items-center gap-4">
 
@@ -239,18 +224,18 @@
             </label>
 
             <input
-              id="email"
-              name="email"
+              id="correo"
+              name="correo"
               type="email"
-              [(ngModel)]="email"
-              placeholder="tu@correo.com"
+              [(ngModel)]="correo"
+              placeholder="Wazaa@gmail.com"
               class="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-700 outline-none transition focus:border-green-700 focus:ring-2 focus:ring-green-100"
             />
 
           </div>
 
 
-          <!-- Password -->
+          <!-- Contra -->
 
           <div>
 
@@ -285,7 +270,6 @@
           </div>
 
 
-          <!-- Botón Login -->
 
           <button
             type="submit"
@@ -323,9 +307,7 @@
       }
 
 
-      <!-- ================================================== -->
-      <!-- REGISTRO -->
-      <!-- ================================================== -->
+
 
       @if (currentView === 'register') {
 
@@ -351,7 +333,6 @@
           class="mt-8 space-y-4"
         >
 
-          <!-- Nombre -->
 
           <div>
 
@@ -374,7 +355,6 @@
           </div>
 
 
-          <!-- Apellido -->
 
           <div>
 
@@ -397,7 +377,6 @@
           </div>
 
 
-          <!-- Correo -->
 
           <div>
 
@@ -420,7 +399,6 @@
           </div>
 
 
-          <!-- Contraseña -->
 
           <div>
 
@@ -443,7 +421,6 @@
           </div>
 
 
-          <!-- Confirmar contraseña -->
 
           <div>
 
@@ -466,7 +443,6 @@
           </div>
 
 
-          <!-- Botón -->
 
           <button
             type="submit"
@@ -478,7 +454,6 @@
         </form>
 
 
-        <!-- Volver -->
 
         <div class="mt-6 text-center">
 
@@ -495,13 +470,9 @@
       }
 
 
-      <!-- ================================================== -->
-      <!-- RECUPERAR CONTRASEÑA -->
-      <!-- ================================================== -->
 
       @if (currentView === 'forgot') {
 
-        <!-- Encabezado -->
 
         <div class="text-center">
 
@@ -515,8 +486,6 @@
 
         </div>
 
-
-        <!-- Icono -->
 
         <div class="mt-8 flex justify-center">
 

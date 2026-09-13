@@ -13,14 +13,18 @@ export class Login {
 
   currentView: AuthView = 'login';
 
-  email = '';
+  // LOGIN
+
+  correo = '';
   password = '';
+
 
   name = '';
   lastName = '';
   registerEmail = '';
   registerPassword = '';
   confirmPassword = '';
+
 
   recoveryEmail = '';
 
@@ -36,25 +40,40 @@ export class Login {
     this.currentView = 'login';
   }
 
+
+
   login(): void {
-    console.log('Login:', {
-      email: this.email,
+
+    const loginRequest = {
+      correo: this.correo,
       password: this.password
-    });
+    };
+
+    console.log('Datos de login:', loginRequest);
   }
+
+
 
   register(): void {
-    console.log('Registro:', {
-      name: this.name,
-      lastName: this.lastName,
-      email: this.registerEmail,
-      password: this.registerPassword,
-      confirmPassword: this.confirmPassword
-    });
+
+    const nombreCompleto =
+      `${this.name} ${this.lastName}`.trim();
+
+    const registerRequest = {
+      nombre: nombreCompleto,
+      correo: this.registerEmail,
+      password: this.registerPassword
+    };
+
+    console.log('Datos de registro:', registerRequest);
   }
 
+
+
   recoverPassword(): void {
-    console.log('Recuperación:', this.recoveryEmail);
+
+    console.log('Correo para recuperación:', this.recoveryEmail);
+
   }
 
 }
