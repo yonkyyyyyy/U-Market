@@ -25,10 +25,13 @@ public class ProductoImagenService {
 
 	private final ProductoRepository productoRepository;
 	private final ImageProcessingService imageProcessingService;
+	private final FileMetadataService fileMetadataService;
 
-	public ProductoImagenService(ProductoRepository productoRepository, ImageProcessingService imageProcessingService) {
+	public ProductoImagenService(ProductoRepository productoRepository, ImageProcessingService imageProcessingService,
+								 FileMetadataService fileMetadataService) {
 		this.productoRepository = productoRepository;
 		this.imageProcessingService = imageProcessingService;
+		this.fileMetadataService = fileMetadataService;
 	}
 
 	@Transactional
@@ -40,7 +43,10 @@ public class ProductoImagenService {
 		try {
 			ProcessedImage procesada = imageProcessingService.process(archivo);
 			producto.setImagenUrl(procesada.mediumUrl());
+			producto.setThumbnailUrl(procesada.thumbUrl());
+			producto.setFullUrl(procesada.fullUrl());
 			productoRepository.save(producto);
+			fileMetadataService.registrarVariantes(productoId, procesada);
 			log.info("Imagen asignada al producto id={}", productoId);
 			return ImagenResult.from(procesada);
 		} catch (IOException e) {
