@@ -2,6 +2,7 @@ package com.uMarket.uMarket.security;
 
 import com.uMarket.uMarket.model.Usuario;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -39,8 +40,12 @@ public class JwtService {
 	}
 
 	public boolean isValid(String token, String correo) {
-		Claims claims = parseClaims(token);
-		return claims.getSubject().equals(correo) && claims.getExpiration().after(new Date());
+		try {
+			Claims claims = parseClaims(token);
+			return claims.getSubject().equals(correo) && claims.getExpiration().after(new Date());
+		} catch (JwtException | IllegalArgumentException ex) {
+			return false;
+		}
 	}
 
 	private Claims parseClaims(String token) {
