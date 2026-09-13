@@ -1,0 +1,6 @@
+storage:
+  local:
+    root: ${UMARKET_STORAGE_LOCAL_PATH:./uploads}
+  azure:
+    connection-string: ${AZURE_STORAGE_CONNECTION_STRING:}
+    container-name: ${AZURE_STORAGE_CONTAINER_NAME:umarket-media}

@@ -1,3 +1,8 @@
 spring:
   application:
     name: uMarket
+  profiles:
+    active: local
+
+storage:
+  provider: local
