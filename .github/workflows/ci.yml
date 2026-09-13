@@ -3,9 +3,11 @@ name: Java CI with Maven
 # El pipeline se ejecutará automáticamente cuando:
 on:
   push:
-    branches: [ "main", "devOsQa", "backend" ] # Se ejecuta al hacer push en estas ramas
+    # Agregamos  las ramas del resto del equipo
+    branches: [ "main", "develop", "devOsQa", "backend", "frontend", "ia-datos" ] 
   pull_request:
-    branches: [ "main" ] # Se ejecuta cuando intentan unir código a la rama principal
+    # Crucial: Ahora validará los PRs que el equipo envíe hacia 'develop' y 'main'
+    branches: [ "main", "develop" ]
 
 jobs:
   build-and-test:
