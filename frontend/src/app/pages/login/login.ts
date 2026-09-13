@@ -1,27 +1,60 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+
+type AuthView = 'login' | 'register' | 'forgot';
 
 @Component({
   selector: 'app-login',
-  standalone: true,
   imports: [FormsModule],
   templateUrl: './login.html',
   styleUrl: './login.css'
 })
 export class Login {
 
+  currentView: AuthView = 'login';
+
   email = '';
   password = '';
 
-  constructor(private router: Router) {}
+  name = '';
+  lastName = '';
+  registerEmail = '';
+  registerPassword = '';
+  confirmPassword = '';
+
+  recoveryEmail = '';
+
+  showRegister(): void {
+    this.currentView = 'register';
+  }
+
+  showForgot(): void {
+    this.currentView = 'forgot';
+  }
+
+  showLogin(): void {
+    this.currentView = 'login';
+  }
 
   login(): void {
-    console.log('Correo:', this.email);
-    console.log('Contraseña:', this.password);
+    console.log('Login:', {
+      email: this.email,
+      password: this.password
+    });
   }
 
-  goToRegister(): void {
-    this.router.navigate(['/registro']);
+  register(): void {
+    console.log('Registro:', {
+      name: this.name,
+      lastName: this.lastName,
+      email: this.registerEmail,
+      password: this.registerPassword,
+      confirmPassword: this.confirmPassword
+    });
   }
+
+  recoverPassword(): void {
+    console.log('Recuperación:', this.recoveryEmail);
+  }
+
 }
