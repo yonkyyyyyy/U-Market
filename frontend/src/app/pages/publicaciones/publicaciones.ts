@@ -1,9 +1,18 @@
 import { Component } from '@angular/core';
+import { Navbar } from '../../components/navbar/navbar';
+import { ProductCarousel } from '../../components/product-carousel/product-carousel';
+import { CreatePost } from '../../components/create-post/create-post';
 
 @Component({
-  imports: [],
   selector: 'app-publicaciones',
-  styleUrl: './publicaciones.css',
+  imports: [
+    Navbar,
+    ProductCarousel,
+    CreatePost
+  ],
   templateUrl: './publicaciones.html',
+  styleUrl: './publicaciones.css'
 })
-export class Publicaciones {}
+export class Publicaciones {
+
+}
