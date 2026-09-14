@@ -5,6 +5,7 @@ import com.uMarket.uMarket.dto.ProductoRequest;
 import com.uMarket.uMarket.exception.ResourceNotFoundException;
 import com.uMarket.uMarket.model.Producto;
 import com.uMarket.uMarket.model.Usuario;
+import com.uMarket.uMarket.repository.ArchivoMultimediaRepository;
 import com.uMarket.uMarket.repository.ProductoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,12 +30,23 @@ class ProductoServiceTest {
 
 	@Mock
 	private ProductoRepository productoRepository;
+	@Mock
+	private ArchivoMultimediaRepository archivoMultimediaRepository;
+	@Mock
+	private CloudinaryService cloudinaryService;
+	@Mock
+	private ImageProcessingService imageProcessingService;
 
 	private ProductoService productoService;
 
 	@BeforeEach
 	void setUp() {
-		productoService = new ProductoService(productoRepository);
+		productoService = new ProductoService(
+				productoRepository,
+				archivoMultimediaRepository,
+				cloudinaryService,
+				imageProcessingService
+		);
 	}
 
 	@Test

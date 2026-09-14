@@ -17,6 +17,7 @@ public record ProductoDto(Long id, String titulo, String descripcion, BigDecimal
 				producto.getEstado(),
 				producto.getCreatedAt(),
 				producto.getUsuario().getId(),
-				producto.getUsuario().getNombre());
+				producto.getUsuario().getNombre()
+		);
 	}
 }
