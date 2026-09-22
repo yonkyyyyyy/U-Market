@@ -1,0 +1,13 @@
+.git
+.gitattributes
+.github
+.gitignore
+.idea
+.mvn
+mvnw
+mvnw.cmd
+target
+frontend
+docker
+HELP.md
+*.iml

@@ -19,7 +19,7 @@ services:
       PGADMIN_DEFAULT_EMAIL: admin@umarket.com
       PGADMIN_DEFAULT_PASSWORD: 15262005
     ports:
-      - "8080:80"
+      - "5050:80"
     restart: always
 
   backend-app:
@@ -28,7 +28,7 @@ services:
       dockerfile: Dockerfile
     container_name: umarket_backend
     ports:
-      - "8081:8080" # El backend se expone en el puerto 8081 porque se uso  el puerto 8080 para pgAdmin
+      - "8080:8080"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/U-Market
       SPRING_DATASOURCE_USERNAME: postgres
