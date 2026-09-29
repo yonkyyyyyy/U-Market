@@ -16,6 +16,9 @@ public record DemandaRequestDTO(
 		String descripcion,
 
 		@Positive(message = "El presupuesto debe ser mayor a 0")
-		BigDecimal presupuestoEstimado
+		BigDecimal presupuestoEstimado,
+
+		@Size(max = 80, message = "La categoría no debe superar los 80 caracteres")
+		String categoria
 ) {
 }

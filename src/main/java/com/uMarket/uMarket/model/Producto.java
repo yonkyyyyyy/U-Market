@@ -32,6 +32,9 @@ public class Producto {
 	@Column(nullable = false, precision = 10, scale = 2)
 	private BigDecimal precio;
 
+	@Column(length = 80)
+	private String categoria;
+
 	@Column(nullable = false, length = 30)
 	private String estado = "DISPONIBLE";
 

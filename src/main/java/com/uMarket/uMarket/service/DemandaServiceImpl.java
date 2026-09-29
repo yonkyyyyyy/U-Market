@@ -60,6 +60,7 @@ public class DemandaServiceImpl implements DemandaService {
 		demanda.setTitulo(request.titulo().trim());
 		demanda.setDescripcion(request.descripcion());
 		demanda.setPresupuestoEstimado(request.presupuestoEstimado());
+		demanda.setCategoria(normalizarCategoria(request.categoria()));
 		return DemandaResponseDTO.from(demandaRepository.save(demanda));
 	}
 
@@ -128,6 +129,7 @@ public class DemandaServiceImpl implements DemandaService {
 		demanda.setTitulo(request.titulo().trim());
 		demanda.setDescripcion(request.descripcion());
 		demanda.setPresupuestoEstimado(request.presupuestoEstimado());
+		demanda.setCategoria(normalizarCategoria(request.categoria()));
 		demanda.setEstado("ACTIVA");
 		demanda.setFechaCreacion(LocalDateTime.now());
 		return demanda;
@@ -139,6 +141,13 @@ public class DemandaServiceImpl implements DemandaService {
 			return up.getUsuario();
 		}
 		throw new IllegalStateException("No hay usuario autenticado en el contexto de seguridad");
+	}
+
+	private String normalizarCategoria(String categoria) {
+		if (categoria == null || categoria.isBlank()) {
+			return null;
+		}
+		return categoria.trim().toUpperCase(java.util.Locale.ROOT);
 	}
 
 	private Demanda obtenerEntidad(Long id) {

@@ -2,8 +2,10 @@ package com.uMarket.uMarket.controller;
 
 import com.uMarket.uMarket.dto.DemandaRequestDTO;
 import com.uMarket.uMarket.dto.DemandaResponseDTO;
+import com.uMarket.uMarket.dto.ProductoDto;
 import com.uMarket.uMarket.security.UsuarioPrincipal;
 import com.uMarket.uMarket.service.DemandaService;
+import com.uMarket.uMarket.service.EmparejamientoService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,14 +24,18 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/demandas")
 public class DemandaController {
 
 	private final DemandaService demandaService;
+	private final EmparejamientoService emparejamientoService;
 
-	public DemandaController(DemandaService demandaService) {
+	public DemandaController(DemandaService demandaService, EmparejamientoService emparejamientoService) {
 		this.demandaService = demandaService;
+		this.emparejamientoService = emparejamientoService;
 	}
 
 	// POST /api/demandas -> 201 Created (usuario tomado del JWT/SecurityContext en el servicio)
@@ -64,6 +70,12 @@ public class DemandaController {
 	@GetMapping("/{id}")
 	public ResponseEntity<DemandaResponseDTO> obtener(@PathVariable Long id) {
 		return ResponseEntity.ok(demandaService.obtener(id));
+	}
+
+	// GET /api/demandas/{id}/sugerencias -> 200 OK (productos DISPONIBLE de otros usuarios)
+	@GetMapping("/{id}/sugerencias")
+	public ResponseEntity<List<ProductoDto>> sugerencias(@PathVariable Long id) {
+		return ResponseEntity.ok(emparejamientoService.buscarProductosSugeridosParaDemanda(id));
 	}
 
 	@PutMapping("/{id}")

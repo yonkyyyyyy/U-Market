@@ -53,7 +53,7 @@ class DemandaServiceTest {
 		Usuario autor = usuario(1L);
 		when(demandaRepository.save(any(Demanda.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-		DemandaRequestDTO request = new DemandaRequestDTO("Busco libro de cálculo", "Cálculo de una variable", new BigDecimal("60.00"));
+		DemandaRequestDTO request = new DemandaRequestDTO("Busco libro de cálculo", "Cálculo de una variable", new BigDecimal("60.00"), null);
 
 		DemandaResponseDTO result = demandaService.crear(autor, request);
 

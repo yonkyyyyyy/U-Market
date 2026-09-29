@@ -30,6 +30,9 @@ public class Demanda {
 	@Column(name = "presupuesto_estimado", precision = 10, scale = 2)
 	private BigDecimal presupuestoEstimado;
 
+	@Column(length = 80)
+	private String categoria;
+
 	@Column(nullable = false, length = 30)
 	private String estado = "ACTIVA";
 

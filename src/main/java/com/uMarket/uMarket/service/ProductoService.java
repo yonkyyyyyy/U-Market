@@ -52,6 +52,7 @@ public class ProductoService {
 		producto.setTitulo(request.titulo().trim());
 		producto.setDescripcion(request.descripcion());
 		producto.setPrecio(request.precio());
+		producto.setCategoria(normalizarCategoria(request.categoria()));
 		producto.setEstado(normalizarEstado(request.estado()));
 		producto.setCreatedAt(LocalDateTime.now());
 		return ProductoDto.from(productoRepository.save(producto));
@@ -64,6 +65,7 @@ public class ProductoService {
 		producto.setTitulo(request.titulo().trim());
 		producto.setDescripcion(request.descripcion());
 		producto.setPrecio(request.precio());
+		producto.setCategoria(normalizarCategoria(request.categoria()));
 		producto.setEstado(normalizarEstado(request.estado()));
 		return ProductoDto.from(productoRepository.save(producto));
 	}
@@ -84,6 +86,13 @@ public class ProductoService {
 		if (!producto.getUsuario().getId().equals(usuario.getId())) {
 			throw new AccessDeniedException("No puedes modificar un producto que no te pertenece");
 		}
+	}
+
+	private String normalizarCategoria(String categoria) {
+		if (categoria == null || categoria.isBlank()) {
+			return null;
+		}
+		return categoria.trim().toUpperCase(Locale.ROOT);
 	}
 
 	private String normalizarEstado(String estado) {
