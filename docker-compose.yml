@@ -22,6 +22,19 @@ services:
       - "8080:80"
     restart: always
 
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: umarket_rabbitmq
+    ports:
+      - "5672:5672"   # AMQP: lo usa el backend
+      - "15672:15672" # Panel de gestión: http://localhost:15672
+    environment:
+      RABBITMQ_DEFAULT_USER: umarket
+      RABBITMQ_DEFAULT_PASS: umarket123
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    restart: unless-stopped
+
   backend-app:
     build:
       context: .
@@ -33,9 +46,15 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/U-Market
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: 15262005
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: umarket
+      RABBITMQ_PASSWORD: umarket123
     depends_on:
       - postgres-db
+      - rabbitmq
     restart: unless-stopped
 
 volumes:
   pgdata:
+  rabbitmq_data:

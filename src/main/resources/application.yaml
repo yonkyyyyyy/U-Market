@@ -9,6 +9,23 @@ spring:
       ddl-auto: update
     open-in-view: false
     show-sql: true
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:umarket}
+    password: ${RABBITMQ_PASSWORD:umarket123}
+    listener:
+      simple:
+        # Workers concurrentes por tarea pesada. Ajustar según capacidad del broker.
+        concurrency: 2
+        max-concurrency: 4
+        retry:
+          # Reintentos automáticos si el worker falla (timeout de OpenAI, etc.)
+          enabled: true
+          max-attempts: 3
+          initial-interval: 1000
+          multiplier: 2
+          max-interval: 10000
 
 jwt:
   secret: ${JWT_SECRET:25d7jmEN6JOU7Jb7wsjb8YkUCdnrZFbM/L6ieishtXOGLXlHGcvrJqgGy+xyoxO1}
