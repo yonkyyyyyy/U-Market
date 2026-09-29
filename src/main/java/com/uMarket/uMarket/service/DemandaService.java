@@ -44,7 +44,7 @@ public class DemandaService {
 		demanda.setTitulo(request.titulo().trim());
 		demanda.setDescripcion(request.descripcion());
 		demanda.setPresupuestoEstimado(request.presupuestoEstimado());
-		demanda.setCreatedAt(LocalDateTime.now());
+		demanda.setFechaCreacion(LocalDateTime.now());
 		return DemandaDto.from(demandaRepository.save(demanda));
 	}
 

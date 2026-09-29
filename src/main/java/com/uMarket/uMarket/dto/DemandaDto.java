@@ -14,7 +14,7 @@ public record DemandaDto(Long id, String titulo, String descripcion, BigDecimal 
 				demanda.getTitulo(),
 				demanda.getDescripcion(),
 				demanda.getPresupuestoEstimado(),
-				demanda.getCreatedAt(),
+				demanda.getFechaCreacion(),
 				demanda.getUsuario().getId(),
 				demanda.getUsuario().getNombre());
 	}
