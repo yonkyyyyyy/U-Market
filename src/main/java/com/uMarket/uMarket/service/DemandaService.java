@@ -1,78 +1,37 @@
 package com.uMarket.uMarket.service;
 
-import com.uMarket.uMarket.dto.DemandaDto;
 import com.uMarket.uMarket.dto.DemandaRequest;
-import com.uMarket.uMarket.exception.ResourceNotFoundException;
-import com.uMarket.uMarket.model.Demanda;
+import com.uMarket.uMarket.dto.DemandaRequestDTO;
+import com.uMarket.uMarket.dto.DemandaResponseDTO;
 import com.uMarket.uMarket.model.Usuario;
-import com.uMarket.uMarket.repository.DemandaRepository;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
-@Service
-public class DemandaService {
+public interface DemandaService {
 
-	private final DemandaRepository demandaRepository;
+	// --- API nueva (usa SecurityContext / JWT internamente) ---
+	DemandaResponseDTO crear(DemandaRequestDTO request);
 
-	public DemandaService(DemandaRepository demandaRepository) {
-		this.demandaRepository = demandaRepository;
-	}
+	Page<DemandaResponseDTO> listarTodas(String estado, Pageable pageable);
 
-	@Transactional(readOnly = true)
-	public List<DemandaDto> listarTodas() {
-		return demandaRepository.findAll().stream().map(DemandaDto::from).toList();
-	}
+	Page<DemandaResponseDTO> listarMisDemandas(Pageable pageable);
 
-	@Transactional(readOnly = true)
-	public List<DemandaDto> listarPorUsuario(Usuario usuario) {
-		return demandaRepository.findByUsuario(usuario).stream().map(DemandaDto::from).toList();
-	}
+	DemandaResponseDTO actualizar(Long id, DemandaRequestDTO request);
 
-	@Transactional(readOnly = true)
-	public DemandaDto obtener(Long id) {
-		return DemandaDto.from(obtenerEntidad(id));
-	}
+	// --- API existente (compatibilidad con código y tests actuales) ---
+	List<DemandaResponseDTO> listarTodas();
 
-	@Transactional
-	public DemandaDto crear(Usuario usuario, DemandaRequest request) {
-		Demanda demanda = new Demanda();
-		demanda.setUsuario(usuario);
-		demanda.setTitulo(request.titulo().trim());
-		demanda.setDescripcion(request.descripcion());
-		demanda.setPresupuestoEstimado(request.presupuestoEstimado());
-		demanda.setFechaCreacion(LocalDateTime.now());
-		return DemandaDto.from(demandaRepository.save(demanda));
-	}
+	List<DemandaResponseDTO> listarPorUsuario(Usuario usuario);
 
-	@Transactional
-	public DemandaDto actualizar(Long id, Usuario usuario, DemandaRequest request) {
-		Demanda demanda = obtenerEntidad(id);
-		verificarPropietario(demanda, usuario);
-		demanda.setTitulo(request.titulo().trim());
-		demanda.setDescripcion(request.descripcion());
-		demanda.setPresupuestoEstimado(request.presupuestoEstimado());
-		return DemandaDto.from(demandaRepository.save(demanda));
-	}
+	DemandaResponseDTO obtener(Long id);
 
-	@Transactional
-	public void eliminar(Long id, Usuario usuario) {
-		Demanda demanda = obtenerEntidad(id);
-		verificarPropietario(demanda, usuario);
-		demandaRepository.delete(demanda);
-	}
+	DemandaResponseDTO crear(Usuario usuario, DemandaRequest request);
 
-	private Demanda obtenerEntidad(Long id) {
-		return demandaRepository.findById(id)
-				.orElseThrow(() -> new ResourceNotFoundException("Demanda no encontrada con id: " + id));
-	}
+	DemandaResponseDTO crear(Usuario usuario, DemandaRequestDTO request);
 
-	private void verificarPropietario(Demanda demanda, Usuario usuario) {
-		if (!demanda.getUsuario().getId().equals(usuario.getId())) {
-			throw new AccessDeniedException("No puedes modificar una demanda que no te pertenece");
-		}
-	}
+	DemandaResponseDTO actualizar(Long id, Usuario usuario, DemandaRequest request);
+
+	void eliminar(Long id, Usuario usuario);
 }

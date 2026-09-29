@@ -1,7 +1,8 @@
 package com.uMarket.uMarket.service;
 
-import com.uMarket.uMarket.dto.DemandaDto;
 import com.uMarket.uMarket.dto.DemandaRequest;
+import com.uMarket.uMarket.dto.DemandaRequestDTO;
+import com.uMarket.uMarket.dto.DemandaResponseDTO;
 import com.uMarket.uMarket.exception.ResourceNotFoundException;
 import com.uMarket.uMarket.model.Demanda;
 import com.uMarket.uMarket.model.Usuario;
@@ -34,14 +35,14 @@ class DemandaServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		demandaService = new DemandaService(demandaRepository);
+		demandaService = new DemandaServiceImpl(demandaRepository);
 	}
 
 	@Test
 	void listarTodasDevuelveListaMapeada() {
 		when(demandaRepository.findAll()).thenReturn(List.of(demanda(1L, usuario(1L))));
 
-		List<DemandaDto> result = demandaService.listarTodas();
+		List<DemandaResponseDTO> result = demandaService.listarTodas();
 
 		assertThat(result).hasSize(1);
 		assertThat(result.get(0).titulo()).isEqualTo("Busco libro de cálculo");
@@ -52,9 +53,9 @@ class DemandaServiceTest {
 		Usuario autor = usuario(1L);
 		when(demandaRepository.save(any(Demanda.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-		DemandaRequest request = new DemandaRequest("Busco libro de cálculo", "Cálculo de una variable", new BigDecimal("60.00"));
+		DemandaRequestDTO request = new DemandaRequestDTO("Busco libro de cálculo", "Cálculo de una variable", new BigDecimal("60.00"));
 
-		DemandaDto result = demandaService.crear(autor, request);
+		DemandaResponseDTO result = demandaService.crear(autor, request);
 
 		assertThat(result.titulo()).isEqualTo("Busco libro de cálculo");
 		assertThat(result.usuarioId()).isEqualTo(1L);
