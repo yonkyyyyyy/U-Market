@@ -64,3 +64,25 @@ jobs:
         SPRING_DATASOURCE_PASSWORD: 15262005
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       run: ./mvnw clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=luisfacz7_U-Market
+
+  deploy:
+    name: Desplegar en Google Cloud
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/devOsQa'
+    
+    steps:
+      - name: Conectar al servidor por SSH y levantar Docker
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            if [ ! -d "U-Market" ]; then
+              git clone -b devOsQa https://github.com/yonkyyyyyy/U-Market.git
+            fi
+            cd U-Market
+            git pull origin devOsQa
+            docker compose down
+            docker compose up -d --build
