@@ -12,16 +12,20 @@ CREATE TABLE productos (
     titulo VARCHAR(150) NOT NULL,
     descripcion TEXT,
     precio DECIMAL(10, 2) NOT NULL,
+    categoria VARCHAR(80),
     estado VARCHAR(30) DEFAULT 'DISPONIBLE', -- Ej: 'DISPONIBLE', 'VENDIDO', 'PAUSADO'
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE demandas (
     id SERIAL PRIMARY KEY,
-    usuario_id INT REFERENCES usuarios(id) ON DELETE CASCADE,
     titulo VARCHAR(150) NOT NULL,
     descripcion TEXT,
     presupuesto_estimado DECIMAL(10, 2),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    categoria VARCHAR(80),
+    estado VARCHAR(30) NOT NULL DEFAULT 'ACTIVA',
+    usuario_id INT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_demandas_estado CHECK (estado IN ('ACTIVA', 'CUMPLIDA', 'CANCELADA'))
 );
 CREATE TABLE mensajes (
     id SERIAL PRIMARY KEY,

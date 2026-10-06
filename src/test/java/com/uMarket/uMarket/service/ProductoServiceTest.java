@@ -75,7 +75,7 @@ class ProductoServiceTest {
 		Usuario dueno = usuario(1L, "ana@utp.edu.pe");
 		when(productoRepository.save(any(Producto.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-		ProductoRequest request = new ProductoRequest("Pendrive", "16GB", new BigDecimal("15.00"), null);
+		ProductoRequest request = new ProductoRequest("Pendrive", "16GB", new BigDecimal("15.00"), null, null);
 
 		ProductoDto result = productoService.crear(dueno, request);
 
@@ -86,7 +86,7 @@ class ProductoServiceTest {
 
 	@Test
 	void crearRechazaEstadoInvalido() {
-		ProductoRequest request = new ProductoRequest("Pendrive", "16GB", new BigDecimal("15.00"), "ROBADO");
+		ProductoRequest request = new ProductoRequest("Pendrive", "16GB", new BigDecimal("15.00"), null, "ROBADO");
 
 		assertThatThrownBy(() -> productoService.crear(usuario(1L, "ana@utp.edu.pe"), request))
 				.isInstanceOf(IllegalArgumentException.class)
@@ -118,7 +118,7 @@ class ProductoServiceTest {
 		when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
 		when(productoRepository.save(any(Producto.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-		ProductoRequest request = new ProductoRequest("Calculadora Casio", "fx-991 CW", new BigDecimal("79.90"), "PAUSADO");
+		ProductoRequest request = new ProductoRequest("Calculadora Casio", "fx-991 CW", new BigDecimal("79.90"), null, "PAUSADO");
 
 		ProductoDto result = productoService.actualizar(1L, dueno, request);
 
@@ -131,7 +131,7 @@ class ProductoServiceTest {
 		Producto producto = producto(1L, usuario(1L, "ana@utp.edu.pe"));
 		when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
 
-		ProductoRequest request = new ProductoRequest("Robado", "x", new BigDecimal("1.00"), "DISPONIBLE");
+		ProductoRequest request = new ProductoRequest("Robado", "x", new BigDecimal("1.00"), null, "DISPONIBLE");
 
 		assertThatThrownBy(() -> productoService.actualizar(1L, usuario(2L, "luis@utp.edu.pe"), request))
 				.isInstanceOf(AccessDeniedException.class);
