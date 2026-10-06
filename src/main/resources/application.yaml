@@ -35,3 +35,12 @@ cloudinary:
   cloud-name: ${CLOUDINARY_CLOUD_NAME:your_cloud_name}
   api-key: ${CLOUDINARY_API_KEY:your_api_key}
   api-secret: ${CLOUDINARY_API_SECRET:your_api_secret}
+
+openai:
+  # API key externa: NUNCA commiteada. Se configura con: setx OPENAI_API_KEY "sk-..."
+  api-key: ${OPENAI_API_KEY:}
+  base-url: https://api.openai.com
+  model: omni-moderation-latest
+  # Umbral de score por categoría (0..1) para considerar el contenido inapropiado.
+  # Se calibra con el set de evaluación (parte del "afinamiento").
+  umbral: 0.5

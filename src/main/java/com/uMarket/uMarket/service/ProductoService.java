@@ -1,7 +1,10 @@
 package com.uMarket.uMarket.service;
 
+import com.uMarket.uMarket.dto.ModerationResultDTO;
 import com.uMarket.uMarket.dto.ProductoDto;
 import com.uMarket.uMarket.dto.ProductoRequest;
+import com.uMarket.uMarket.enums.ModerationStatus;
+import com.uMarket.uMarket.exception.ContenidoInapropiadoException;
 import com.uMarket.uMarket.exception.ResourceNotFoundException;
 import com.uMarket.uMarket.model.ArchivoMultimedia;
 import com.uMarket.uMarket.model.Producto;
@@ -30,15 +33,18 @@ public class ProductoService {
 	private final ArchivoMultimediaRepository archivoMultimediaRepository;
 	private final CloudinaryService cloudinaryService;
 	private final ImageProcessingService imageProcessingService;
+	private final OpenAIModeracionService openAIModeracionService;
 
 	public ProductoService(ProductoRepository productoRepository,
 								ArchivoMultimediaRepository archivoMultimediaRepository,
 								CloudinaryService cloudinaryService,
-								ImageProcessingService imageProcessingService) {
+								ImageProcessingService imageProcessingService,
+								OpenAIModeracionService openAIModeracionService) {
 		this.productoRepository = productoRepository;
 		this.archivoMultimediaRepository = archivoMultimediaRepository;
 		this.cloudinaryService = cloudinaryService;
 		this.imageProcessingService = imageProcessingService;
+		this.openAIModeracionService = openAIModeracionService;
 	}
 
 	@Transactional(readOnly = true)
@@ -62,6 +68,10 @@ public class ProductoService {
 
 	@Transactional
 	public ProductoDto crear(Usuario usuario, ProductoRequest request) {
+		// Tarea IA: revisión de contenido ANTES de guardar.
+		// Si el texto tiene insultos/denigraciones/palabras mayores → se rechaza (422).
+		verificarContenido(request);
+
 		Producto producto = new Producto();
 		producto.setUsuario(usuario);
 		producto.setTitulo(request.titulo().trim());
@@ -119,6 +129,23 @@ public class ProductoService {
 			throw new IllegalArgumentException("Estado inválido. Use: DISPONIBLE, VENDIDO o PAUSADO");
 		}
 		return normalizado;
+	}
+
+	/**
+	 * Revisa que el contenido a publicar (título + descripción) no contenga
+	 * lenguaje inapropiado. Si lo contiene, lanza {@code ContenidoInapropiadoException}
+	 * y la publicación NO se crea. Si OpenAI falla (fail-open), se permite publicar.
+	 */
+	private void verificarContenido(ProductoRequest request) {
+		String texto = (request.titulo() == null ? "" : request.titulo().trim())
+				+ " " + (request.descripcion() == null ? "" : request.descripcion().trim());
+		if (texto.isBlank()) {
+			return;
+		}
+		ModerationResultDTO resultado = openAIModeracionService.analizar(texto);
+		if (resultado.getStatus() == ModerationStatus.REJECTED) {
+			throw new ContenidoInapropiadoException(resultado);
+		}
 	}
 
 	@Transactional

@@ -1,7 +1,10 @@
 package com.uMarket.uMarket.service;
 
+import com.uMarket.uMarket.dto.ModerationResultDTO;
 import com.uMarket.uMarket.dto.ProductoDto;
 import com.uMarket.uMarket.dto.ProductoRequest;
+import com.uMarket.uMarket.enums.ModerationStatus;
+import com.uMarket.uMarket.exception.ContenidoInapropiadoException;
 import com.uMarket.uMarket.exception.ResourceNotFoundException;
 import com.uMarket.uMarket.model.Producto;
 import com.uMarket.uMarket.model.Usuario;
@@ -36,6 +39,8 @@ class ProductoServiceTest {
 	private CloudinaryService cloudinaryService;
 	@Mock
 	private ImageProcessingService imageProcessingService;
+	@Mock
+	private OpenAIModeracionService openAIModeracionService;
 
 	private ProductoService productoService;
 
@@ -45,7 +50,8 @@ class ProductoServiceTest {
 				productoRepository,
 				archivoMultimediaRepository,
 				cloudinaryService,
-				imageProcessingService
+				imageProcessingService,
+				openAIModeracionService
 		);
 	}
 
@@ -73,6 +79,8 @@ class ProductoServiceTest {
 	@Test
 	void crearAsignaEstadoPorDefectoDisponible() {
 		Usuario dueno = usuario(1L, "ana@utp.edu.pe");
+		when(openAIModeracionService.analizar(any(String.class)))
+				.thenReturn(moderacion(ModerationStatus.APPROVED));
 		when(productoRepository.save(any(Producto.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
 		ProductoRequest request = new ProductoRequest("Pendrive", "16GB", new BigDecimal("15.00"), null, null);
@@ -85,7 +93,38 @@ class ProductoServiceTest {
 	}
 
 	@Test
+	void crearRechazaContenidoInapropiado() {
+		Usuario dueno = usuario(1L, "ana@utp.edu.pe");
+		when(openAIModeracionService.analizar(any(String.class)))
+				.thenReturn(moderacion(ModerationStatus.REJECTED));
+
+		ProductoRequest request = new ProductoRequest("Vete a la mierda ladrón", "te voy a denigrar", new BigDecimal("15.00"), null, null);
+
+		assertThatThrownBy(() -> productoService.crear(dueno, request))
+				.isInstanceOf(ContenidoInapropiadoException.class);
+
+		verify(productoRepository, never()).save(any());
+	}
+
+	@Test
+	void crearPermiteSiOpenAiFalla() {
+		Usuario dueno = usuario(1L, "ana@utp.edu.pe");
+		when(openAIModeracionService.analizar(any(String.class)))
+				.thenReturn(moderacion(ModerationStatus.FAILED));
+		when(productoRepository.save(any(Producto.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+		ProductoRequest request = new ProductoRequest("Pendrive", "16GB", new BigDecimal("15.00"), null, null);
+
+		ProductoDto result = productoService.crear(dueno, request);
+
+		// Fail-open: si OpenAI falla, la publicación se permite (no bloquea por error de infra)
+		assertThat(result.estado()).isEqualTo("DISPONIBLE");
+	}
+
+	@Test
 	void crearRechazaEstadoInvalido() {
+		when(openAIModeracionService.analizar(any(String.class)))
+				.thenReturn(moderacion(ModerationStatus.APPROVED));
 		ProductoRequest request = new ProductoRequest("Pendrive", "16GB", new BigDecimal("15.00"), null, "ROBADO");
 
 		assertThatThrownBy(() -> productoService.crear(usuario(1L, "ana@utp.edu.pe"), request))
@@ -180,5 +219,12 @@ class ProductoServiceTest {
 		producto.setPrecio(new BigDecimal("89.50"));
 		producto.setEstado("DISPONIBLE");
 		return producto;
+	}
+
+	private ModerationResultDTO moderacion(ModerationStatus status) {
+		ModerationResultDTO resultado = new ModerationResultDTO();
+		resultado.setStatus(status);
+		resultado.setConfidenceScore(status == ModerationStatus.REJECTED ? 0.98 : 0.01);
+		return resultado;
 	}
 }
