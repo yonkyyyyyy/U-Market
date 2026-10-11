@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { AuthService } from '../../services/auth.service';
 
 type AuthView = 'login' | 'register' | 'forgot';
 
@@ -10,14 +11,15 @@ type AuthView = 'login' | 'register' | 'forgot';
   styleUrl: './login.css'
 })
 export class Login {
+  private readonly authService = inject(AuthService);
 
   currentView: AuthView = 'login';
 
-  // LOGIN
-
   correo = '';
   password = '';
-
+  isLoggingIn = false;
+  loginError = '';
+  loginSuccess = '';
 
   name = '';
   lastName = '';
@@ -43,13 +45,23 @@ export class Login {
 
 
   login(): void {
+    this.isLoggingIn = true;
+    this.loginError = '';
+    this.loginSuccess = '';
 
-    const loginRequest = {
+    this.authService.login({
       correo: this.correo,
       password: this.password
-    };
-
-    console.log('Datos de login:', loginRequest);
+    }).subscribe({
+      next: () => {
+        this.isLoggingIn = false;
+        this.loginSuccess = 'Inicio de sesión exitoso.';
+      },
+      error: () => {
+        this.isLoggingIn = false;
+        this.loginError = 'No se pudo iniciar sesión. Verifica tus credenciales e inténtalo de nuevo.';
+      }
+    });
   }
 
 
