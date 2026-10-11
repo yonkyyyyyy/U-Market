@@ -1,5 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 
 type AuthView = 'login' | 'register' | 'forgot';
@@ -12,6 +13,7 @@ type AuthView = 'login' | 'register' | 'forgot';
 })
 export class Login {
   private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
   currentView: AuthView = 'login';
 
@@ -19,7 +21,6 @@ export class Login {
   password = '';
   isLoggingIn = false;
   loginError = '';
-  loginSuccess = '';
 
   name = '';
   lastName = '';
@@ -47,15 +48,15 @@ export class Login {
   login(): void {
     this.isLoggingIn = true;
     this.loginError = '';
-    this.loginSuccess = '';
 
     this.authService.login({
       correo: this.correo,
       password: this.password
     }).subscribe({
-      next: () => {
+      next: (response) => {
+        this.authService.saveSession(response);
         this.isLoggingIn = false;
-        this.loginSuccess = 'Inicio de sesión exitoso.';
+        void this.router.navigate(['/publicaciones']);
       },
       error: () => {
         this.isLoggingIn = false;

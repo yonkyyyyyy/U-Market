@@ -24,10 +24,21 @@ export interface AuthResponse {
 })
 export class AuthService {
   private readonly loginUrl = '/api/auth/login';
+  private readonly tokenKey = 'umarket_token';
+  private readonly userKey = 'umarket_user';
 
   constructor(private readonly http: HttpClient) {}
 
   login(request: LoginRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(this.loginUrl, request);
+  }
+
+  saveSession(response: AuthResponse): void {
+    sessionStorage.setItem(this.tokenKey, response.token);
+    sessionStorage.setItem(this.userKey, JSON.stringify(response.user));
+  }
+
+  getToken(): string | null {
+    return sessionStorage.getItem(this.tokenKey);
   }
 }
