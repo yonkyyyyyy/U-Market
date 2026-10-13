@@ -1,15 +1,17 @@
 package com.uMarket.uMarket.event;
 
-import com.uMarket.uMarket.model.Alerta;
-import com.uMarket.uMarket.model.Usuario;
-import com.uMarket.uMarket.repository.AlertaRepository;
-import com.uMarket.uMarket.repository.UsuarioRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.uMarket.uMarket.model.Alerta;
+import com.uMarket.uMarket.model.Usuario;
+import com.uMarket.uMarket.repository.AlertaRepository;
+import com.uMarket.uMarket.repository.UsuarioRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Suscriptor de {@link AlertaInternaEvent}.
@@ -30,11 +32,6 @@ public class AlertaEventListener {
 
 	private final AlertaRepository alertaRepository;
 	private final UsuarioRepository usuarioRepository;
-
-    public AlertaEventListener(AlertaRepository alertaRepository, UsuarioRepository usuarioRepository) {
-        this.alertaRepository = alertaRepository;
-        this.usuarioRepository = usuarioRepository;
-    }
 
     @Async("alertaExecutor")
 	@EventListener(condition = "#event.tipoAlerta.name() == 'EXPIRACION'")
