@@ -6,6 +6,10 @@ import com.uMarket.uMarket.dto.ProductoDto;
 import com.uMarket.uMarket.security.UsuarioPrincipal;
 import com.uMarket.uMarket.service.DemandaService;
 import com.uMarket.uMarket.service.EmparejamientoService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -28,6 +32,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/demandas")
+@Tag(name = "Demandas (Se Busca)", description = "Creación, consulta, actualización y eliminación de demandas del módulo Se Busca")
 public class DemandaController {
 
 	private final DemandaService demandaService;
@@ -39,6 +44,14 @@ public class DemandaController {
 	}
 
 	// POST /api/demandas -> 201 Created (usuario tomado del JWT/SecurityContext en el servicio)
+	@Operation(summary = "Crear una demanda",
+			description = "Crea una demanda en estado ACTIVA para el usuario autenticado (extraído del JWT). "
+					+ "Requiere cabecera `Authorization: Bearer <token>`.")
+	@ApiResponses({
+			@ApiResponse(responseCode = "201", description = "Demanda creada correctamente"),
+			@ApiResponse(responseCode = "400", description = "Datos de entrada inválidos"),
+			@ApiResponse(responseCode = "401", description = "Falta token JWT o es inválido")
+	})
 	@PostMapping
 	public ResponseEntity<DemandaResponseDTO> crear(@Valid @RequestBody DemandaRequestDTO request) {
 		DemandaResponseDTO creada = demandaService.crear(request);
