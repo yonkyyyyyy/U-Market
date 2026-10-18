@@ -44,3 +44,7 @@ openai:
   # Umbral de score por categoría (0..1) para considerar el contenido inapropiado.
   # Se calibra con el set de evaluación (parte del "afinamiento").
   umbral: 0.5
+  # Visión artificial: análisis de imágenes de productos (sustancias prohibidas).
+  # Modelo multimodal de OpenAI. El umbral se calibra con el set de imágenes de evaluación.
+  vision-model: gpt-4o-mini
+  vision-umbral: 0.5

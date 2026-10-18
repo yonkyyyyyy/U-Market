@@ -34,17 +34,20 @@ public class ProductoService {
 	private final CloudinaryService cloudinaryService;
 	private final ImageProcessingService imageProcessingService;
 	private final OpenAIModeracionService openAIModeracionService;
+	private final VisionAnalisisService visionAnalisisService;
 
 	public ProductoService(ProductoRepository productoRepository,
 								ArchivoMultimediaRepository archivoMultimediaRepository,
 								CloudinaryService cloudinaryService,
 								ImageProcessingService imageProcessingService,
-								OpenAIModeracionService openAIModeracionService) {
+								OpenAIModeracionService openAIModeracionService,
+								VisionAnalisisService visionAnalisisService) {
 		this.productoRepository = productoRepository;
 		this.archivoMultimediaRepository = archivoMultimediaRepository;
 		this.cloudinaryService = cloudinaryService;
 		this.imageProcessingService = imageProcessingService;
 		this.openAIModeracionService = openAIModeracionService;
+		this.visionAnalisisService = visionAnalisisService;
 	}
 
 	@Transactional(readOnly = true)
@@ -87,6 +90,8 @@ public class ProductoService {
 	public ProductoDto actualizar(Long id, Usuario usuario, ProductoRequest request) {
 		Producto producto = obtenerEntidad(id);
 		verificarPropietario(producto, usuario);
+		// Tarea IA: también se revisa el texto al EDITAR (antes se podía esquivar el filtro).
+		verificarContenido(request);
 		producto.setTitulo(request.titulo().trim());
 		producto.setDescripcion(request.descripcion());
 		producto.setPrecio(request.precio());
@@ -148,6 +153,23 @@ public class ProductoService {
 		}
 	}
 
+	/**
+	 * Revisa que la foto del producto no contenga sustancias prohibidas ni armas.
+	 * Si las contiene, lanza {@code ContenidoInapropiadoException} y la imagen NO
+	 * se sube a Cloudinary ni se guarda en la BD.
+	 *
+	 * <p><b>Fail-closed (solo para la foto):</b> a diferencia del texto, aquí solo
+	 * se permite subir si la IA confirma explícitamente que es segura
+	 * ({@code APPROVED}). Si el veredicto es {@code REJECTED} —o {@code FAILED}
+	 * por caída/timeout de OpenAI— se rechaza y no se sube nada.</p>
+	 */
+	private void verificarImagen(File archivo) {
+		ModerationResultDTO resultado = visionAnalisisService.analizar(archivo);
+		if (resultado.getStatus() != ModerationStatus.APPROVED) {
+			throw new ContenidoInapropiadoException(resultado);
+		}
+	}
+
 	@Transactional
 	public String subirImagenProducto(Long productoId, MultipartFile file, Usuario usuario) {
 		try {
@@ -155,6 +177,9 @@ public class ProductoService {
 			verificarPropietario(producto, usuario);
 
 			File processedFile = imageProcessingService.compressAndResizeImage(file);
+			// Tarea Visión: análisis de la foto ANTES de subirla a Cloudinary.
+			// Si contiene sustancias prohibidas/armas → se rechaza (422) y no se sube nada.
+			verificarImagen(processedFile);
 			Map uploadResult = cloudinaryService.uploadFile(processedFile);
 
 			ArchivoMultimedia archivo = new ArchivoMultimedia();

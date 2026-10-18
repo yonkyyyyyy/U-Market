@@ -16,14 +16,18 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -41,6 +45,8 @@ class ProductoServiceTest {
 	private ImageProcessingService imageProcessingService;
 	@Mock
 	private OpenAIModeracionService openAIModeracionService;
+	@Mock
+	private VisionAnalisisService visionAnalisisService;
 
 	private ProductoService productoService;
 
@@ -51,7 +57,8 @@ class ProductoServiceTest {
 				archivoMultimediaRepository,
 				cloudinaryService,
 				imageProcessingService,
-				openAIModeracionService
+				openAIModeracionService,
+				visionAnalisisService
 		);
 	}
 
@@ -155,6 +162,8 @@ class ProductoServiceTest {
 		Usuario dueno = usuario(1L, "ana@utp.edu.pe");
 		Producto producto = producto(1L, dueno);
 		when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
+		when(openAIModeracionService.analizar(any(String.class)))
+				.thenReturn(moderacion(ModerationStatus.APPROVED));
 		when(productoRepository.save(any(Producto.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
 		ProductoRequest request = new ProductoRequest("Calculadora Casio", "fx-991 CW", new BigDecimal("79.90"), null, "PAUSADO");
@@ -179,6 +188,22 @@ class ProductoServiceTest {
 	}
 
 	@Test
+	void actualizarRechazaContenidoInapropiado() {
+		Usuario dueno = usuario(1L, "ana@utp.edu.pe");
+		Producto producto = producto(1L, dueno);
+		when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
+		when(openAIModeracionService.analizar(any(String.class)))
+				.thenReturn(moderacion(ModerationStatus.REJECTED));
+
+		ProductoRequest request = new ProductoRequest("Vete a la mierda ladrón", "te voy a denigrar", new BigDecimal("15.00"), null, "DISPONIBLE");
+
+		assertThatThrownBy(() -> productoService.actualizar(1L, dueno, request))
+				.isInstanceOf(ContenidoInapropiadoException.class);
+
+		verify(productoRepository, never()).save(any());
+	}
+
+	@Test
 	void eliminarPermiteAlPropietario() {
 		Usuario dueno = usuario(1L, "ana@utp.edu.pe");
 		Producto producto = producto(1L, dueno);
@@ -198,6 +223,65 @@ class ProductoServiceTest {
 				.isInstanceOf(AccessDeniedException.class);
 
 		verify(productoRepository, never()).delete(any());
+	}
+
+	@Test
+	void subirImagenRechazaContenidoProhibidoYNoSubeACloudinary() throws Exception {
+		Usuario dueno = usuario(1L, "ana@utp.edu.pe");
+		Producto producto = producto(1L, dueno);
+		when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
+		when(imageProcessingService.compressAndResizeImage(any()))
+				.thenReturn(File.createTempFile("img_test", ".jpg"));
+		when(visionAnalisisService.analizar(any()))
+				.thenReturn(moderacion(ModerationStatus.REJECTED));
+
+		assertThatThrownBy(() -> productoService.subirImagenProducto(1L, mock(MultipartFile.class), dueno))
+				.isInstanceOf(ContenidoInapropiadoException.class);
+
+		// El filtro de visión corre ANTES: no debe tocar Cloudinary ni la BD.
+		verify(cloudinaryService, never()).uploadFile(any());
+		verify(archivoMultimediaRepository, never()).save(any());
+	}
+
+	@Test
+	void subirImagenPermitidaLaSubeACloudinaryYGuardaUrl() throws Exception {
+		Usuario dueno = usuario(1L, "ana@utp.edu.pe");
+		Producto producto = producto(1L, dueno);
+		when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
+		when(imageProcessingService.compressAndResizeImage(any()))
+				.thenReturn(File.createTempFile("img_test", ".jpg"));
+		when(visionAnalisisService.analizar(any()))
+				.thenReturn(moderacion(ModerationStatus.APPROVED));
+		when(cloudinaryService.uploadFile(any())).thenReturn(Map.of(
+				"secure_url", "https://res.cloudinary.com/umarket/cuaderno.jpg",
+				"public_id", "umarket/cuaderno",
+				"format", "jpg",
+				"bytes", "1234"));
+		when(archivoMultimediaRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+		String url = productoService.subirImagenProducto(1L, mock(MultipartFile.class), dueno);
+
+		assertThat(url).isEqualTo("https://res.cloudinary.com/umarket/cuaderno.jpg");
+		verify(cloudinaryService).uploadFile(any());
+		verify(archivoMultimediaRepository).save(any());
+	}
+
+	@Test
+	void subirImagenRechazaSiLaIaFalla() throws Exception {
+		Usuario dueno = usuario(1L, "ana@utp.edu.pe");
+		Producto producto = producto(1L, dueno);
+		when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
+		when(imageProcessingService.compressAndResizeImage(any()))
+				.thenReturn(File.createTempFile("img_test", ".jpg"));
+		when(visionAnalisisService.analizar(any()))
+				.thenReturn(moderacion(ModerationStatus.FAILED));
+
+		assertThatThrownBy(() -> productoService.subirImagenProducto(1L, mock(MultipartFile.class), dueno))
+				.isInstanceOf(ContenidoInapropiadoException.class);
+
+		// Fail-closed: si la IA no responde, la foto NO se sube (a diferencia del texto).
+		verify(cloudinaryService, never()).uploadFile(any());
+		verify(archivoMultimediaRepository, never()).save(any());
 	}
 
 	private Usuario usuario(Long id, String correo) {
