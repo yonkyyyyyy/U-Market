@@ -1,13 +1,43 @@
 spring:
+  # En local usa H2 en memoria; en CI las variables SPRING_DATASOURCE_* tienen
+  # prioridad y apuntan a PostgreSQL. NO fijamos driver-class-name para que
+  # Spring Boot lo infiera de la URL (H2 local / PostgreSQL en CI), porque
+  # fijarlo a H2 rompia el build en CI (URL de Postgres + driver de H2).
   datasource:
-    url: jdbc:h2:mem:umarket-test;DB_CLOSE_DELAY=-1
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
+    url: ${SPRING_DATASOURCE_URL:jdbc:h2:mem:umarket-test;DB_CLOSE_DELAY=-1}
+    username: ${SPRING_DATASOURCE_USERNAME:sa}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
   jpa:
     hibernate:
       ddl-auto: create-drop
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:umarket}
+    password: ${RABBITMQ_PASSWORD:umarket123}
+
+# Config del pipeline asincrono necesaria para que el contexto de tests cargue.
+# Ojo: este archivo (src/test/resources) TAPA a src/main/resources/application.yaml,
+# asi que hay que mantener aqui todas las claves sin valor por defecto
+# (cloudinary.* y jwt.*) o el contexto falla al arrancar.
+uploads:
+  staging-path: ${UPLOADS_STAGING_PATH:target/test-staging}
+  staging-ttl-horas: 24
+  staging-cleanup-ms: 3600000
 
 jwt:
   secret: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
   expiration: 86400000
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:test_cloud}
+  api-key: ${CLOUDINARY_API_KEY:test_key}
+  api-secret: ${CLOUDINARY_API_SECRET:test_secret}
+
+openai:
+  api-key: ${OPENAI_API_KEY:}
+  base-url: https://api.openai.com
+  model: omni-moderation-latest
+  umbral: 0.5
+  vision-model: gpt-4o-mini
+  vision-umbral: 0.5

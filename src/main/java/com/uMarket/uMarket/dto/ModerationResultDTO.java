@@ -10,6 +10,7 @@ public class ModerationResultDTO {
     private ModerationStatus status;
     private double confidenceScore;
     private LocalDateTime processedAt;
+    private java.util.List<String> categoriasDetectadas = java.util.List.of();
 
     public ModerationResultDTO() {
         this.processedAt = LocalDateTime.now(ZoneId.systemDefault());
@@ -62,5 +63,13 @@ public class ModerationResultDTO {
 
     public void setProcessedAt(LocalDateTime processedAt) {
         this.processedAt = processedAt;
+    }
+
+    public java.util.List<String> getCategoriasDetectadas() {
+        return categoriasDetectadas;
+    }
+
+    public void setCategoriasDetectadas(java.util.List<String> categoriasDetectadas) {
+        this.categoriasDetectadas = categoriasDetectadas == null ? java.util.List.of() : categoriasDetectadas;
     }
 }

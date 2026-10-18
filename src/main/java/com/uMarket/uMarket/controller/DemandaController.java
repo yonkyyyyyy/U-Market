@@ -85,7 +85,7 @@ public class DemandaController {
 		return ResponseEntity.ok(demandaService.obtener(id));
 	}
 
-	// GET /api/demandas/{id}/sugerencias -> 200 OK (productos DISPONIBLE de otros usuarios)
+	// GET /api/demandas/{id}/sugerencias -> 200 OK (productos ACTIVO de otros usuarios)
 	@GetMapping("/{id}/sugerencias")
 	public ResponseEntity<List<ProductoDto>> sugerencias(@PathVariable Long id) {
 		return ResponseEntity.ok(emparejamientoService.buscarProductosSugeridosParaDemanda(id));

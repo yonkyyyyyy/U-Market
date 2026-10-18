@@ -9,6 +9,34 @@ spring:
       ddl-auto: update
     open-in-view: false
     show-sql: true
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:umarket}
+    password: ${RABBITMQ_PASSWORD:umarket123}
+    listener:
+      simple:
+        # Workers concurrentes por tarea pesada. Ajustar según capacidad del broker.
+        concurrency: 2
+        max-concurrency: 4
+        retry:
+          # Reintentos automáticos si el worker falla (Cloudinary/BD caídos).
+          # Al agotarlos, el mensaje se rechaza y cae en la DLQ (productos.moderacion.dlq)
+          # en vez de perderse.
+          enabled: true
+          max-attempts: 3
+          initial-interval: 1000
+          multiplier: 2
+          max-interval: 10000
+
+# Almacenamiento temporal del pipeline asíncrono: las imágenes viven aquí
+# MIENTRAS se moderan; no van a Cloudinary hasta aprobarse.
+uploads:
+  staging-path: ${UPLOADS_STAGING_PATH:uploads/staging}
+  # Horas tras las cuales una imagen en revisión se descarta (p. ej. mensaje perdido).
+  staging-ttl-horas: ${UPLOADS_STAGING_TTL_HORAS:24}
+  # Cada cuánto corre la limpieza de staging (ms).
+  staging-cleanup-ms: ${UPLOADS_STAGING_CLEANUP_MS:3600000}
 
 jwt:
   secret: ${JWT_SECRET:25d7jmEN6JOU7Jb7wsjb8YkUCdnrZFbM/L6ieishtXOGLXlHGcvrJqgGy+xyoxO1}
@@ -18,3 +46,16 @@ cloudinary:
   cloud-name: ${CLOUDINARY_CLOUD_NAME:your_cloud_name}
   api-key: ${CLOUDINARY_API_KEY:your_api_key}
   api-secret: ${CLOUDINARY_API_SECRET:your_api_secret}
+
+openai:
+  # API key externa: NUNCA commiteada. Se configura con: setx OPENAI_API_KEY "sk-..."
+  api-key: ${OPENAI_API_KEY:}
+  base-url: https://api.openai.com
+  model: omni-moderation-latest
+  # Umbral de score por categoría (0..1) para considerar el contenido inapropiado.
+  # Se calibra con el set de evaluación (parte del "afinamiento").
+  umbral: 0.5
+  # Visión artificial: análisis de imágenes de productos (sustancias prohibidas).
+  # Modelo multimodal de OpenAI. El umbral se calibra con el set de imágenes de evaluación.
+  vision-model: gpt-4o-mini
+  vision-umbral: 0.5
