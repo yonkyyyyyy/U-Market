@@ -29,8 +29,8 @@ services:
       - "5672:5672"   # AMQP: lo usa el backend
       - "15672:15672" # Panel de gestión: http://localhost:15672
     environment:
-      RABBITMQ_DEFAULT_USER: umarket
-      RABBITMQ_DEFAULT_PASS: umarket123
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-umarket}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Define RABBITMQ_PASSWORD en .env}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     restart: unless-stopped
@@ -48,8 +48,13 @@ services:
       SPRING_DATASOURCE_PASSWORD: 15262005
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
-      RABBITMQ_USERNAME: umarket
-      RABBITMQ_PASSWORD: umarket123
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-umarket}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?Define RABBITMQ_PASSWORD en .env}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:?Define CLOUDINARY_CLOUD_NAME en .env}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:?Define CLOUDINARY_API_KEY en .env}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:?Define CLOUDINARY_API_SECRET en .env}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?Define OPENAI_API_KEY en .env}
+      IA_INTERNAL_API_KEY: ${IA_INTERNAL_API_KEY:?Define IA_INTERNAL_API_KEY en .env}
     depends_on:
       - postgres-db
       - rabbitmq
