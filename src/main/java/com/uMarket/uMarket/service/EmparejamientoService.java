@@ -1,10 +1,13 @@
 package com.uMarket.uMarket.service;
 
 import com.uMarket.uMarket.dto.ProductoDto;
+import com.uMarket.uMarket.event.AlertaInternaEvent;
+import com.uMarket.uMarket.event.TipoAlerta;
 import com.uMarket.uMarket.exception.ResourceNotFoundException;
 import com.uMarket.uMarket.model.Demanda;
 import com.uMarket.uMarket.repository.DemandaRepository;
 import com.uMarket.uMarket.repository.ProductoRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -30,11 +33,14 @@ public class EmparejamientoService {
 
 	private final DemandaRepository demandaRepository;
 	private final ProductoRepository productoRepository;
+	private final ApplicationEventPublisher eventPublisher;
 
 	public EmparejamientoService(DemandaRepository demandaRepository,
-			ProductoRepository productoRepository) {
+			ProductoRepository productoRepository,
+			ApplicationEventPublisher eventPublisher) {
 		this.demandaRepository = demandaRepository;
 		this.productoRepository = productoRepository;
+		this.eventPublisher = eventPublisher;
 	}
 
 	/**
@@ -54,11 +60,23 @@ public class EmparejamientoService {
 		Pageable limite = PageRequest.of(0, LIMITE_SUGERENCIAS);
 		// Sin keyword útil: texto imposible de matchear para que solo aplique el filtro de categoría.
 		String texto = keyword.isEmpty() ? "8f3a2c9e1b7d4a6f0e2c5b8d" : keyword;
-		return productoRepository.buscarSugeridosParaDemanda(
+		List<ProductoDto> sugeridos = productoRepository.buscarSugeridosParaDemanda(
 				demanda.getCategoria(),
 				texto,
 				demanda.getUsuario().getId(),
 				limite).stream().map(ProductoDto::from).toList();
+
+		// Alerta desacoplada: no bloquea la respuesta aunque persistir la alerta tarde.
+		if (!sugeridos.isEmpty()) {
+			eventPublisher.publishEvent(new AlertaInternaEvent(
+					demanda.getUsuario().getId(),
+					TipoAlerta.MATCH_ENCONTRADO,
+					"¡Encontramos coincidencias para tu búsqueda!",
+					"Tu demanda '" + demanda.getTitulo() + "' tiene " + sugeridos.size()
+							+ " producto(s) sugerido(s). Revísalos en el módulo Se Busca."
+			));
+		}
+		return sugeridos;
 	}
 
 	/**

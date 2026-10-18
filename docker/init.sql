@@ -25,7 +25,7 @@ CREATE TABLE demandas (
     estado VARCHAR(30) NOT NULL DEFAULT 'ACTIVA',
     usuario_id INT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
     fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT chk_demandas_estado CHECK (estado IN ('ACTIVA', 'CUMPLIDA', 'CANCELADA'))
+    CONSTRAINT chk_demandas_estado CHECK (estado IN ('ACTIVA', 'CUMPLIDA', 'CANCELADA', 'BLOQUEADA'))
 );
 CREATE TABLE mensajes (
     id SERIAL PRIMARY KEY,
@@ -41,3 +41,13 @@ CREATE TABLE chatbot_logs (
     respuesta_ia TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE auditoria_demanda (
+    id SERIAL PRIMARY KEY,
+    demanda_id BIGINT NOT NULL,
+    admin_id BIGINT NOT NULL REFERENCES usuarios(id),
+    accion VARCHAR(30) NOT NULL,
+    motivo TEXT,
+    fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_auditoria_demanda_id ON auditoria_demanda(demanda_id);
+CREATE INDEX idx_auditoria_admin_id ON auditoria_demanda(admin_id);
