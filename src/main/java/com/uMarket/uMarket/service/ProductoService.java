@@ -15,6 +15,7 @@ import com.uMarket.uMarket.model.Usuario;
 import com.uMarket.uMarket.repository.ArchivoMultimediaRepository;
 import com.uMarket.uMarket.repository.ImagenEnRevisionRepository;
 import com.uMarket.uMarket.repository.ProductoRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+@Slf4j
 @Service
 public class ProductoService {
 
@@ -56,6 +58,7 @@ public class ProductoService {
 	private final VisionAnalisisService visionAnalisisService;
 	private final StorageService storageService;
 	private final TareaPesadaProducer tareaPesadaProducer;
+	private final RegistroModeracionService registroModeracionService;
 
 	public ProductoService(ProductoRepository productoRepository,
 							ArchivoMultimediaRepository archivoMultimediaRepository,
@@ -65,7 +68,8 @@ public class ProductoService {
 							OpenAIModeracionService openAIModeracionService,
 							VisionAnalisisService visionAnalisisService,
 							StorageService storageService,
-							TareaPesadaProducer tareaPesadaProducer) {
+							TareaPesadaProducer tareaPesadaProducer,
+							RegistroModeracionService registroModeracionService) {
 		this.productoRepository = productoRepository;
 		this.archivoMultimediaRepository = archivoMultimediaRepository;
 		this.imagenEnRevisionRepository = imagenEnRevisionRepository;
@@ -75,6 +79,7 @@ public class ProductoService {
 		this.visionAnalisisService = visionAnalisisService;
 		this.storageService = storageService;
 		this.tareaPesadaProducer = tareaPesadaProducer;
+		this.registroModeracionService = registroModeracionService;
 	}
 
 	@Transactional(readOnly = true)
@@ -126,8 +131,9 @@ public class ProductoService {
 	 */
 	@Transactional
 	public ProductoDto crear(Usuario usuario, ProductoRequest request) {
-		// Tarea IA (texto): revisión de contenido ANTES de guardar.
-		verificarContenido(request);
+		// Tarea IA (texto): revisión de contenido ANTES de guardar. Si es inapropiado
+		// se registra el log y se lanza la excepción (nada se crea).
+		ResultadoTexto texto = revisarTexto(request.titulo(), request.descripcion(), usuario, null);
 		// Se valida el estado solicitado (para seguir devolviendo 400 si es inválido).
 		normalizarEstado(request.estado());
 
@@ -143,7 +149,10 @@ public class ProductoService {
 		// NO se publica aquí: la activación la decide el pipeline cuando el cliente lo
 		// pida (publicar(...)) o cuando se aprueben sus imágenes. Esperar evita exponer
 		// la publicación antes de que el cliente termine de subir su contenido.
-		return ProductoDto.from(productoRepository.save(producto));
+		Producto guardado = productoRepository.save(producto);
+		// Ya con el id real, se deja el log de la decisión (panel de moderación).
+		registrarLogTexto(guardado, usuario, texto);
+		return ProductoDto.from(guardado);
 	}
 
 	/**
@@ -167,7 +176,7 @@ public class ProductoService {
 		Producto producto = obtenerEntidad(id);
 		verificarPropietario(producto, usuario);
 		// Tarea IA: también se revisa el texto al EDITAR (antes se podía esquivar el filtro).
-		verificarContenido(request);
+		ResultadoTexto texto = revisarTexto(request.titulo(), request.descripcion(), usuario, id);
 		producto.setTitulo(request.titulo().trim());
 		producto.setDescripcion(request.descripcion());
 		producto.setPrecio(request.precio());
@@ -177,7 +186,9 @@ public class ProductoService {
 		if (!ESTADO_PENDIENTE.equals(producto.getEstado()) && !ESTADO_RECHAZADO.equals(producto.getEstado())) {
 			producto.setEstado(normalizarEstado(request.estado()));
 		}
-		return ProductoDto.from(productoRepository.save(producto));
+		Producto guardado = productoRepository.save(producto);
+		registrarLogTexto(guardado, usuario, texto);
+		return ProductoDto.from(guardado);
 	}
 
 	@Transactional
@@ -245,7 +256,9 @@ public class ProductoService {
 		}
 
 		File archivo = storageService.leer(imagen.getStagingPath());
+		long inicio = System.nanoTime();
 		ModerationResultDTO resultado = visionAnalisisService.analizar(archivo);
+		long latenciaMs = (System.nanoTime() - inicio) / 1_000_000;
 
 		if (resultado.getStatus() == ModerationStatus.APPROVED) {
 			subirACloudinary(imagen, archivo);
@@ -258,6 +271,13 @@ public class ProductoService {
 		storageService.borrar(imagen.getStagingPath());
 
 		recalcularEstado(imagen.getProducto().getId());
+
+		// Log de la decisión de visión para el panel de moderación (best-effort).
+		Producto producto = imagen.getProducto();
+		ModerationStatus status = resultado.getStatus();
+		registrarSeguro(() -> registroModeracionService.registrarImagen(
+				producto.getId(), producto.getTitulo(), producto.getUsuario().getId(),
+				resultado, motivoImagen(status), latenciaMs));
 	}
 
 	private void subirACloudinary(ImagenEnRevision imagen, File archivo) {
@@ -368,18 +388,73 @@ public class ProductoService {
 
 	/**
 	 * Revisa que el contenido a publicar (título + descripción) no contenga
-	 * lenguaje inapropiado. Si lo contiene, lanza {@code ContenidoInapropiadoException}
-	 * y la publicación NO se crea. Si OpenAI falla (fail-open), se permite publicar.
+	 * lenguaje inapropiado. Si lo contiene, deja el log de la decisión y lanza
+	 * {@code ContenidoInapropiadoException}: la publicación NO se crea. Si OpenAI
+	 * falla (fail-open), se permite publicar.
+	 *
+	 * @return el análisis y su latencia, o {@code null} si no había texto que revisar
 	 */
-	private void verificarContenido(ProductoRequest request) {
-		String texto = (request.titulo() == null ? "" : request.titulo().trim())
-				+ " " + (request.descripcion() == null ? "" : request.descripcion().trim());
+	private ResultadoTexto revisarTexto(String titulo, String descripcion, Usuario usuario, Long productoId) {
+		String texto = (titulo == null ? "" : titulo.trim())
+				+ " " + (descripcion == null ? "" : descripcion.trim());
 		if (texto.isBlank()) {
-			return;
+			return null;
 		}
+		long inicio = System.nanoTime();
 		ModerationResultDTO resultado = openAIModeracionService.analizar(texto);
+		long latenciaMs = (System.nanoTime() - inicio) / 1_000_000;
+
 		if (resultado.getStatus() == ModerationStatus.REJECTED) {
+			// Se registra ANTES de lanzar: al rechazar, la transacción de crear/editar
+			// se revierte, así que el log debe vivir en su propia transacción.
+			ModerationStatus status = resultado.getStatus();
+			registrarSeguro(() -> registroModeracionService.registrarTexto(
+					productoId, titulo, usuario.getId(), resultado, texto, motivoTexto(status), latenciaMs));
 			throw new ContenidoInapropiadoException(resultado);
 		}
+		return new ResultadoTexto(resultado, texto, latenciaMs);
+	}
+
+	/** Log de una revisión de texto que NO se rechazó (aprobada o con la IA caída). */
+	private void registrarLogTexto(Producto producto, Usuario usuario, ResultadoTexto texto) {
+		if (texto == null) {
+			return;
+		}
+		ModerationStatus status = texto.resultado().getStatus();
+		registrarSeguro(() -> registroModeracionService.registrarTexto(
+				producto.getId(), producto.getTitulo(), usuario.getId(),
+				texto.resultado(), texto.texto(), motivoTexto(status), texto.latenciaMs()));
+	}
+
+	private String motivoTexto(ModerationStatus status) {
+		return switch (status) {
+			case REJECTED -> "Lenguaje inapropiado detectado en el texto";
+			case FAILED, PENDING -> "La IA de texto no estuvo disponible (fail-open: se publicó igual)";
+			case APPROVED -> null;
+		};
+	}
+
+	private String motivoImagen(ModerationStatus status) {
+		return switch (status) {
+			case REJECTED -> "Contenido prohibido detectado en la imagen";
+			case FAILED, PENDING -> "La IA de visión no estuvo disponible (fail-closed: no se publicó)";
+			case APPROVED -> null;
+		};
+	}
+
+	/**
+	 * El log de moderación es best-effort: si falla (BD, timeout), se avisa pero
+	 * NUNCA se tumba la moderación ni la publicación.
+	 */
+	private void registrarSeguro(Runnable registro) {
+		try {
+			registro.run();
+		} catch (RuntimeException e) {
+			log.warn("No se pudo registrar el log de moderación: {}", e.getMessage());
+		}
+	}
+
+	/** Análisis de texto ya resuelto, con lo necesario para dejar el log después. */
+	private record ResultadoTexto(ModerationResultDTO resultado, String texto, long latenciaMs) {
 	}
 }

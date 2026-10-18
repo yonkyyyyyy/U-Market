@@ -2,8 +2,10 @@ package com.uMarket.uMarket.scheduled;
 
 import com.uMarket.uMarket.enums.EstadoModeracion;
 import com.uMarket.uMarket.model.ImagenEnRevision;
+import com.uMarket.uMarket.model.Producto;
 import com.uMarket.uMarket.repository.ImagenEnRevisionRepository;
 import com.uMarket.uMarket.service.ProductoService;
+import com.uMarket.uMarket.service.RegistroModeracionService;
 import com.uMarket.uMarket.service.StorageService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,15 +28,18 @@ public class StagingCleanupTask {
     private final ImagenEnRevisionRepository imagenEnRevisionRepository;
     private final StorageService storageService;
     private final ProductoService productoService;
+    private final RegistroModeracionService registroModeracionService;
     private final long horasTtl;
 
     public StagingCleanupTask(ImagenEnRevisionRepository imagenEnRevisionRepository,
                               StorageService storageService,
                               ProductoService productoService,
+                              RegistroModeracionService registroModeracionService,
                               @Value("${uploads.staging-ttl-horas:24}") long horasTtl) {
         this.imagenEnRevisionRepository = imagenEnRevisionRepository;
         this.storageService = storageService;
         this.productoService = productoService;
+        this.registroModeracionService = registroModeracionService;
         this.horasTtl = horasTtl;
     }
 
@@ -55,7 +60,23 @@ public class StagingCleanupTask {
             imagen.setEstadoModeracion(EstadoModeracion.RECHAZADO);
             imagenEnRevisionRepository.save(imagen);
             productoService.recalcularEstado(imagen.getProducto().getId());
+            registrarLog(imagen);
         }
         log.info("Limpieza de staging: {} imagen(es) en revisión antigua(s) marcada(s) como RECHAZADO", antiguas.size());
+    }
+
+    /**
+     * Deja el rastro en el log de moderación. Estas imágenes no tienen veredicto de
+     * la IA (nadie respondió), por eso quedan como FALLIDO y no ensucian la matriz.
+     * Es best-effort: un fallo aquí no debe impedir la limpieza.
+     */
+    private void registrarLog(ImagenEnRevision imagen) {
+        try {
+            Producto producto = imagen.getProducto();
+            registroModeracionService.registrarTtl(
+                    producto.getId(), producto.getTitulo(), producto.getUsuario().getId());
+        } catch (RuntimeException e) {
+            log.warn("No se pudo registrar el log de moderación de la limpieza TTL: {}", e.getMessage());
+        }
     }
 }

@@ -32,6 +32,10 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -58,6 +62,8 @@ class ProductoServiceTest {
 	private StorageService storageService;
 	@Mock
 	private TareaPesadaProducer tareaPesadaProducer;
+	@Mock
+	private RegistroModeracionService registroModeracionService;
 
 	private ProductoService productoService;
 
@@ -72,7 +78,8 @@ class ProductoServiceTest {
 				openAIModeracionService,
 				visionAnalisisService,
 				storageService,
-				tareaPesadaProducer
+				tareaPesadaProducer,
+				registroModeracionService
 		);
 	}
 
@@ -176,6 +183,57 @@ class ProductoServiceTest {
 
 		// Fail-open del texto: si OpenAI falla, la publicación se crea igual (aunque
 		// siga BLOQUEADA hasta que el pipeline asíncrono la resuelva).
+		assertThat(result.estado()).isEqualTo("PENDIENTE");
+	}
+
+	@Test
+	void crearRegistraElLogDeLaModeracionDeTexto() {
+		Usuario dueno = usuario(1L, "ana@utp.edu.pe");
+		when(openAIModeracionService.analizar(any(String.class)))
+				.thenReturn(moderacion(ModerationStatus.APPROVED));
+		when(productoRepository.save(any(Producto.class))).thenAnswer(invocation -> {
+			Producto guardado = invocation.getArgument(0);
+			guardado.setId(5L);
+			return guardado;
+		});
+
+		productoService.crear(dueno, new ProductoRequest("Pendrive", "16GB", new BigDecimal("15.00"), null, null));
+
+		// El panel de moderación se alimenta con CADA decisión, no solo con las rechazadas.
+		verify(registroModeracionService)
+				.registrarTexto(eq(5L), eq("Pendrive"), eq(1L), any(), any(), isNull(), anyLong());
+	}
+
+	@Test
+	void crearRegistraElLogAunqueElTextoSeRechace() {
+		Usuario dueno = usuario(1L, "ana@utp.edu.pe");
+		when(openAIModeracionService.analizar(any(String.class)))
+				.thenReturn(moderacion(ModerationStatus.REJECTED));
+
+		ProductoRequest request = new ProductoRequest("Vete a la mierda ladrón", "te voy a denigrar", new BigDecimal("15.00"), null, null);
+
+		assertThatThrownBy(() -> productoService.crear(dueno, request))
+				.isInstanceOf(ContenidoInapropiadoException.class);
+
+		// El log debe sobrevivir al rollback de la transacción que rechaza el contenido.
+		verify(registroModeracionService)
+				.registrarTexto(isNull(), eq("Vete a la mierda ladrón"), eq(1L), any(), any(), any(), anyLong());
+		verify(productoRepository, never()).save(any());
+	}
+
+	@Test
+	void elFalloDelLogNoRompeLaCreacion() {
+		Usuario dueno = usuario(1L, "ana@utp.edu.pe");
+		when(openAIModeracionService.analizar(any(String.class)))
+				.thenReturn(moderacion(ModerationStatus.APPROVED));
+		when(productoRepository.save(any(Producto.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		doThrow(new RuntimeException("BD caída")).when(registroModeracionService)
+				.registrarTexto(any(), any(), any(), any(), any(), any(), anyLong());
+
+		ProductoDto result = productoService.crear(dueno,
+				new ProductoRequest("Pendrive", "16GB", new BigDecimal("15.00"), null, null));
+
+		// El log es best-effort: si falla, la publicación se crea igual.
 		assertThat(result.estado()).isEqualTo("PENDIENTE");
 	}
 
@@ -388,6 +446,9 @@ class ProductoServiceTest {
 		verify(cloudinaryService).uploadFile(any());
 		verify(archivoMultimediaRepository).save(any());
 		verify(storageService).borrar("uuid-123.jpg");
+		// La aprobación también queda en el log (sin motivo: no hubo nada que rechazar).
+		verify(registroModeracionService)
+				.registrarImagen(eq(1L), eq("Calculadora Casio"), eq(1L), any(), isNull(), anyLong());
 	}
 
 	@Test
@@ -410,6 +471,9 @@ class ProductoServiceTest {
 		assertThat(producto.getEstado()).isEqualTo("RECHAZADO");
 		verify(cloudinaryService, never()).uploadFile(any());
 		verify(archivoMultimediaRepository, never()).save(any());
+		// El rechazo de visión se registra con su motivo para el panel.
+		verify(registroModeracionService).registrarImagen(eq(1L), eq("Calculadora Casio"), eq(1L), any(),
+				eq("Contenido prohibido detectado en la imagen"), anyLong());
 	}
 
 	@Test

@@ -1,9 +1,12 @@
 spring:
+  # En local usa H2 en memoria; en CI las variables SPRING_DATASOURCE_* tienen
+  # prioridad y apuntan a PostgreSQL. NO fijamos driver-class-name para que
+  # Spring Boot lo infiera de la URL (H2 local / PostgreSQL en CI), porque
+  # fijarlo a H2 rompia el build en CI (URL de Postgres + driver de H2).
   datasource:
-    url: jdbc:h2:mem:umarket-test;DB_CLOSE_DELAY=-1
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
+    url: ${SPRING_DATASOURCE_URL:jdbc:h2:mem:umarket-test;DB_CLOSE_DELAY=-1}
+    username: ${SPRING_DATASOURCE_USERNAME:sa}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
   jpa:
     hibernate:
       ddl-auto: create-drop
