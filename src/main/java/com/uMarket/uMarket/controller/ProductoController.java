@@ -6,6 +6,7 @@ import com.uMarket.uMarket.security.UsuarioPrincipal;
 import com.uMarket.uMarket.service.ProductoService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,8 +45,9 @@ public class ProductoController {
 	}
 
 	@GetMapping("/{id}")
-	public ProductoDto obtener(@PathVariable Long id) {
-		return productoService.obtener(id);
+	public ProductoDto obtener(@PathVariable Long id,
+							   @AuthenticationPrincipal UsuarioPrincipal principal) {
+		return productoService.obtener(id, principal.getUsuario());
 	}
 
 	@PostMapping
@@ -69,13 +71,37 @@ public class ProductoController {
 		productoService.eliminar(id, principal.getUsuario());
 	}
 
+	/**
+	 * Recibe la imagen y la deja EN REVISIÓN. La respuesta es 202 (Accepted):
+	 * la subida se aceptó, pero el resultado de la moderación es asíncrono y
+	 * la imagen todavía NO está en Cloudinary ni el producto es visible.
+	 */
 	@PostMapping("/{id}/imagen")
-	public Map<String, String> subirImagen(@PathVariable Long id,
+	public ResponseEntity<Map<String, Object>> subirImagen(@PathVariable Long id,
 										 @RequestParam("archivo") MultipartFile archivo,
 										 @AuthenticationPrincipal UsuarioPrincipal principal) {
-		String url = productoService.subirImagenProducto(id, archivo, principal.getUsuario());
-		Map<String, String> response = new HashMap<>();
-		response.put("url", url);
-		return response;
+		Long imagenId = productoService.subirImagenProducto(id, archivo, principal.getUsuario());
+		Map<String, Object> response = new HashMap<>();
+		response.put("mensaje", "Imagen recibida; queda en revisión antes de publicarse");
+		response.put("imagenId", imagenId);
+		response.put("estado", "PENDIENTE");
+		return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+	}
+
+	/**
+	 * Marca la publicación como "lista" (el cliente ya no subirá más contenido) y
+	 * encola el pipeline asíncrono, que resolverá su estado: {@code ACTIVO} si no
+	 * hay nada pendiente (p. ej. publicar sin imágenes) o {@code RECHAZADO} si algo
+	 * fue rechazado. Respuesta 202: el resultado es asíncrono y hasta entonces el
+	 * producto sigue {@code PENDIENTE} (no visible).
+	 */
+	@PostMapping("/{id}/publicar")
+	public ResponseEntity<Map<String, Object>> publicar(@PathVariable Long id,
+										@AuthenticationPrincipal UsuarioPrincipal principal) {
+		productoService.publicar(id, principal.getUsuario());
+		Map<String, Object> response = new HashMap<>();
+		response.put("mensaje", "Publicación en cola; el pipeline asíncrono resolverá su estado");
+		response.put("estado", "PENDIENTE");
+		return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
 	}
 }

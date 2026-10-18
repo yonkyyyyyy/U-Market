@@ -20,12 +20,23 @@ spring:
         concurrency: 2
         max-concurrency: 4
         retry:
-          # Reintentos automáticos si el worker falla (timeout de OpenAI, etc.)
+          # Reintentos automáticos si el worker falla (Cloudinary/BD caídos).
+          # Al agotarlos, el mensaje se rechaza y cae en la DLQ (productos.moderacion.dlq)
+          # en vez de perderse.
           enabled: true
           max-attempts: 3
           initial-interval: 1000
           multiplier: 2
           max-interval: 10000
+
+# Almacenamiento temporal del pipeline asíncrono: las imágenes viven aquí
+# MIENTRAS se moderan; no van a Cloudinary hasta aprobarse.
+uploads:
+  staging-path: ${UPLOADS_STAGING_PATH:uploads/staging}
+  # Horas tras las cuales una imagen en revisión se descarta (p. ej. mensaje perdido).
+  staging-ttl-horas: ${UPLOADS_STAGING_TTL_HORAS:24}
+  # Cada cuánto corre la limpieza de staging (ms).
+  staging-cleanup-ms: ${UPLOADS_STAGING_CLEANUP_MS:3600000}
 
 jwt:
   secret: ${JWT_SECRET:25d7jmEN6JOU7Jb7wsjb8YkUCdnrZFbM/L6ieishtXOGLXlHGcvrJqgGy+xyoxO1}

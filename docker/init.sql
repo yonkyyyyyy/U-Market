@@ -13,7 +13,7 @@ CREATE TABLE productos (
     descripcion TEXT,
     precio DECIMAL(10, 2) NOT NULL,
     categoria VARCHAR(80),
-    estado VARCHAR(30) DEFAULT 'DISPONIBLE', -- Ej: 'DISPONIBLE', 'VENDIDO', 'PAUSADO'
+    estado VARCHAR(30) DEFAULT 'ACTIVO', -- Ej: 'ACTIVO', 'VENDIDO', 'PAUSADO'
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE demandas (

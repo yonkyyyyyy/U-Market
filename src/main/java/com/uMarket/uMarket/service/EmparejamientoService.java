@@ -38,7 +38,7 @@ public class EmparejamientoService {
 	}
 
 	/**
-	 * Sugiere productos DISPONIBLE de otros usuarios que coincidan con la
+	 * Sugiere productos ACTIVO de otros usuarios que coincidan con la
 	 * categoría de la demanda o con la palabra clave más relevante de su título.
 	 */
 	@Transactional(readOnly = true)

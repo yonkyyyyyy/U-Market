@@ -31,3 +31,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Pipeline de moderación ###
+# Imágenes temporales en staging (se moderan y suben a Cloudinary o se descartan)
+uploads/

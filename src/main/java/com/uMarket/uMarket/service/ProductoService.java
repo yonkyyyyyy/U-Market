@@ -3,13 +3,17 @@ package com.uMarket.uMarket.service;
 import com.uMarket.uMarket.dto.ModerationResultDTO;
 import com.uMarket.uMarket.dto.ProductoDto;
 import com.uMarket.uMarket.dto.ProductoRequest;
+import com.uMarket.uMarket.dto.TareaPesada;
+import com.uMarket.uMarket.enums.EstadoModeracion;
 import com.uMarket.uMarket.enums.ModerationStatus;
 import com.uMarket.uMarket.exception.ContenidoInapropiadoException;
 import com.uMarket.uMarket.exception.ResourceNotFoundException;
 import com.uMarket.uMarket.model.ArchivoMultimedia;
+import com.uMarket.uMarket.model.ImagenEnRevision;
 import com.uMarket.uMarket.model.Producto;
 import com.uMarket.uMarket.model.Usuario;
 import com.uMarket.uMarket.repository.ArchivoMultimediaRepository;
+import com.uMarket.uMarket.repository.ImagenEnRevisionRepository;
 import com.uMarket.uMarket.repository.ProductoRepository;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -18,6 +22,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
@@ -27,53 +33,103 @@ import java.util.Set;
 @Service
 public class ProductoService {
 
-	private static final Set<String> ESTADOS_VALIDOS = Set.of("DISPONIBLE", "VENDIDO", "PAUSADO");
+	/** Estado publicado (el 'ACTIVO' del enunciado). */
+	public static final String ESTADO_ACTIVO = "ACTIVO";
+	public static final String ESTADO_PENDIENTE = "PENDIENTE";
+	public static final String ESTADO_RECHAZADO = "RECHAZADO";
+
+	/** Nomenclatura anterior del estado publicado: se acepta como alias y se normaliza. */
+	private static final String ESTADO_ACTIVO_LEGACY = "DISPONIBLE";
+
+	/** Estados que puede fijar el usuario directamente (los demás los controla la moderación). */
+	private static final Set<String> ESTADOS_VALIDOS = Set.of(ESTADO_ACTIVO, "VENDIDO", "PAUSADO");
+
+	/** Estados visibles en el catálogo público. Excluye PENDIENTE y RECHAZADO. */
+	private static final Set<String> ESTADOS_PUBLICOS = Set.of(ESTADO_ACTIVO, "VENDIDO", "PAUSADO");
 
 	private final ProductoRepository productoRepository;
 	private final ArchivoMultimediaRepository archivoMultimediaRepository;
+	private final ImagenEnRevisionRepository imagenEnRevisionRepository;
 	private final CloudinaryService cloudinaryService;
 	private final ImageProcessingService imageProcessingService;
 	private final OpenAIModeracionService openAIModeracionService;
 	private final VisionAnalisisService visionAnalisisService;
+	private final StorageService storageService;
+	private final TareaPesadaProducer tareaPesadaProducer;
 
 	public ProductoService(ProductoRepository productoRepository,
-								ArchivoMultimediaRepository archivoMultimediaRepository,
-								CloudinaryService cloudinaryService,
-								ImageProcessingService imageProcessingService,
-								OpenAIModeracionService openAIModeracionService,
-								VisionAnalisisService visionAnalisisService) {
+							ArchivoMultimediaRepository archivoMultimediaRepository,
+							ImagenEnRevisionRepository imagenEnRevisionRepository,
+							CloudinaryService cloudinaryService,
+							ImageProcessingService imageProcessingService,
+							OpenAIModeracionService openAIModeracionService,
+							VisionAnalisisService visionAnalisisService,
+							StorageService storageService,
+							TareaPesadaProducer tareaPesadaProducer) {
 		this.productoRepository = productoRepository;
 		this.archivoMultimediaRepository = archivoMultimediaRepository;
+		this.imagenEnRevisionRepository = imagenEnRevisionRepository;
 		this.cloudinaryService = cloudinaryService;
 		this.imageProcessingService = imageProcessingService;
 		this.openAIModeracionService = openAIModeracionService;
 		this.visionAnalisisService = visionAnalisisService;
+		this.storageService = storageService;
+		this.tareaPesadaProducer = tareaPesadaProducer;
 	}
 
 	@Transactional(readOnly = true)
 	public List<ProductoDto> listarTodos(String estado) {
 		if (estado == null || estado.isBlank()) {
-			return productoRepository.findAll().stream().map(ProductoDto::from).toList();
+			// Catálogo público: solo productos aprobados (ni PENDIENTE ni RECHAZADO).
+			return productoRepository.findAll().stream()
+					.filter(producto -> ESTADOS_PUBLICOS.contains(producto.getEstado()))
+					.map(ProductoDto::from).toList();
 		}
-		return productoRepository.findByEstado(estado.trim().toUpperCase(Locale.ROOT))
-				.stream().map(ProductoDto::from).toList();
+		String normalizado = normalizarFiltroEstado(estado);
+		if (!ESTADOS_PUBLICOS.contains(normalizado)) {
+			// No se exponen publicaciones en revisión ni rechazadas.
+			return List.of();
+		}
+		return productoRepository.findByEstado(normalizado).stream().map(ProductoDto::from).toList();
 	}
 
 	@Transactional(readOnly = true)
 	public List<ProductoDto> listarPorUsuario(Usuario usuario) {
+		// El dueño SÍ ve sus productos en revisión y rechazados (para saber qué pasó).
 		return productoRepository.findByUsuario(usuario).stream().map(ProductoDto::from).toList();
 	}
 
+	/**
+	 * Devuelve la publicación para el usuario que consulta. Las publicaciones en
+	 * revisión ({@code PENDIENTE}) o rechazadas ({@code RECHAZADO}) solo las ve su
+	 * dueño; para el resto se responde 404 (no se revela que existen).
+	 */
 	@Transactional(readOnly = true)
-	public ProductoDto obtener(Long id) {
-		return ProductoDto.from(obtenerEntidad(id));
+	public ProductoDto obtener(Long id, Usuario usuario) {
+		Producto producto = obtenerEntidad(id);
+		boolean esDueno = producto.getUsuario().getId().equals(usuario.getId());
+		if (!ESTADOS_PUBLICOS.contains(producto.getEstado()) && !esDueno) {
+			throw new ResourceNotFoundException("Producto no encontrado con id: " + id);
+		}
+		return ProductoDto.from(producto);
 	}
 
+	/**
+	 * Crea la publicación. El texto se revisa de forma SÍNCRONA (si es inapropiado
+	 * responde 422 y no se crea nada).
+	 *
+	 * <p>La publicación nace {@code PENDIENTE} y <b>no se activa sola</b>: el cliente
+	 * la publica con {@link #publicar(Long, Usuario)} (o subiendo una imagen), y es
+	 * el pipeline asíncrono quien la pasa a {@code ACTIVO}. Así ninguna publicación
+	 * es ACTIVA antes de pasar por el pipeline y no hay ventana de exposición entre
+	 * la creación y la subida de la imagen.</p>
+	 */
 	@Transactional
 	public ProductoDto crear(Usuario usuario, ProductoRequest request) {
-		// Tarea IA: revisión de contenido ANTES de guardar.
-		// Si el texto tiene insultos/denigraciones/palabras mayores → se rechaza (422).
+		// Tarea IA (texto): revisión de contenido ANTES de guardar.
 		verificarContenido(request);
+		// Se valida el estado solicitado (para seguir devolviendo 400 si es inválido).
+		normalizarEstado(request.estado());
 
 		Producto producto = new Producto();
 		producto.setUsuario(usuario);
@@ -81,9 +137,29 @@ public class ProductoService {
 		producto.setDescripcion(request.descripcion());
 		producto.setPrecio(request.precio());
 		producto.setCategoria(normalizarCategoria(request.categoria()));
-		producto.setEstado(normalizarEstado(request.estado()));
+		// Nace BLOQUEADA: no es visible hasta que el pipeline asíncrono la resuelva.
+		producto.setEstado(ESTADO_PENDIENTE);
 		producto.setCreatedAt(LocalDateTime.now());
+		// NO se publica aquí: la activación la decide el pipeline cuando el cliente lo
+		// pida (publicar(...)) o cuando se aprueben sus imágenes. Esperar evita exponer
+		// la publicación antes de que el cliente termine de subir su contenido.
 		return ProductoDto.from(productoRepository.save(producto));
+	}
+
+	/**
+	 * Marca la publicación como "lista" y encola el pipeline asíncrono, que resolverá
+	 * su estado: {@code ACTIVO} si no hay nada pendiente (p. ej. publicar sin
+	 * imágenes), {@code PENDIENTE} si aún hay imágenes en revisión o {@code RECHAZADO}
+	 * si alguna fue rechazada.
+	 *
+	 * <p>Es la vía para publicar sin imágenes sin exponer la publicación antes de
+	 * tiempo: hasta que el worker no corra, el producto sigue {@code PENDIENTE}.</p>
+	 */
+	@Transactional
+	public void publicar(Long id, Usuario usuario) {
+		Producto producto = obtenerEntidad(id);
+		verificarPropietario(producto, usuario);
+		tareaPesadaProducer.publicar(TareaPesada.publicacion(id));
 	}
 
 	@Transactional
@@ -96,7 +172,11 @@ public class ProductoService {
 		producto.setDescripcion(request.descripcion());
 		producto.setPrecio(request.precio());
 		producto.setCategoria(normalizarCategoria(request.categoria()));
-		producto.setEstado(normalizarEstado(request.estado()));
+		// El estado de un producto aún no aprobado lo manda la moderación: no se puede
+		// "activar" a mano uno PENDIENTE o RECHAZADO.
+		if (!ESTADO_PENDIENTE.equals(producto.getEstado()) && !ESTADO_RECHAZADO.equals(producto.getEstado())) {
+			producto.setEstado(normalizarEstado(request.estado()));
+		}
 		return ProductoDto.from(productoRepository.save(producto));
 	}
 
@@ -105,6 +185,141 @@ public class ProductoService {
 		Producto producto = obtenerEntidad(id);
 		verificarPropietario(producto, usuario);
 		productoRepository.delete(producto);
+	}
+
+	/**
+	 * Sube (recibe) la imagen de un producto y la deja EN REVISIÓN.
+	 *
+	 * <p>La imagen comprimida se guarda en el {@link StorageService} (staging, en
+	 * disco) y se encola una {@link TareaPesada} para que el worker la modere.
+	 * <b>La imagen no va a Cloudinary todavía</b>: eso ocurre en el worker solo si
+	 * pasa el filtro. Mientras tanto el producto sigue {@code PENDIENTE}.</p>
+	 *
+	 * @return id de la imagen en revisión (para que el cliente pueda consultarla)
+	 */
+	@Transactional
+	public Long subirImagenProducto(Long productoId, MultipartFile file, Usuario usuario) {
+		Producto producto = obtenerEntidad(productoId);
+		verificarPropietario(producto, usuario);
+
+		File comprimida;
+		try {
+			comprimida = imageProcessingService.compressAndResizeImage(file);
+		} catch (IOException e) {
+			throw new RuntimeException("Error al procesar la imagen", e);
+		}
+
+		String stagingId = storageService.guardar(comprimida);
+		comprimida.delete();
+
+		ImagenEnRevision imagen = new ImagenEnRevision();
+		imagen.setProducto(producto);
+		imagen.setStagingPath(stagingId);
+		imagen.setEstadoModeracion(EstadoModeracion.PENDIENTE);
+		ImagenEnRevision guardada = imagenEnRevisionRepository.save(imagen);
+
+		// Mientras la imagen se modera, el producto queda oculto (PENDIENTE).
+		recalcularEstado(productoId);
+
+		// Pipeline asíncrono: el worker moderará la imagen y lo activará (o rechazará).
+		tareaPesadaProducer.publicar(
+				TareaPesada.imagen(productoId, guardada.getId(), stagingId));
+
+		return guardada.getId();
+	}
+
+	/**
+	 * Paso ASÍNCRONO del pipeline: lo ejecuta el worker ({@code TareaPesadaWorker}).
+	 * Toma una imagen en revisión, la analiza con visión; si pasa, la sube a
+	 * Cloudinary y la aprueba; si no, la rechaza (fail-closed). Al final recalcula
+	 * el estado del producto, que solo será {@code ACTIVO} si TODO pasó.
+	 *
+	 * <p><b>Idempotente:</b> si la imagen ya no está {@code PENDIENTE} (mensaje
+	 * duplicado de RabbitMQ), no hace nada → nunca se sube dos veces.</p>
+	 */
+	@Transactional
+	public void procesarImagenPendiente(Long imagenId) {
+		ImagenEnRevision imagen = imagenEnRevisionRepository.findByIdForUpdate(imagenId).orElse(null);
+		if (imagen == null || imagen.getEstadoModeracion() != EstadoModeracion.PENDIENTE) {
+			return; // ya procesada (o no existe) → idempotente
+		}
+
+		File archivo = storageService.leer(imagen.getStagingPath());
+		ModerationResultDTO resultado = visionAnalisisService.analizar(archivo);
+
+		if (resultado.getStatus() == ModerationStatus.APPROVED) {
+			subirACloudinary(imagen, archivo);
+			imagen.setEstadoModeracion(EstadoModeracion.APROBADO);
+		} else {
+			// Fail-closed: REJECTED (contenido prohibido) o FAILED (IA caída) ⇒ no se publica.
+			imagen.setEstadoModeracion(EstadoModeracion.RECHAZADO);
+		}
+		imagenEnRevisionRepository.save(imagen);
+		storageService.borrar(imagen.getStagingPath());
+
+		recalcularEstado(imagen.getProducto().getId());
+	}
+
+	private void subirACloudinary(ImagenEnRevision imagen, File archivo) {
+		try {
+			// CloudinaryService.uploadFile BORRA el archivo que recibe: le damos una copia
+			// para no destruir el staging (así, si algo falla después, el reintento de
+			// RabbitMQ aún tiene la imagen para volver a intentarlo).
+			File copia = File.createTempFile("upload_", extension(archivo.getName()));
+			Files.copy(archivo.toPath(), copia.toPath(), StandardCopyOption.REPLACE_EXISTING);
+			Map subida = cloudinaryService.uploadFile(copia);
+
+			ArchivoMultimedia multimedia = new ArchivoMultimedia();
+			multimedia.setProducto(imagen.getProducto());
+			multimedia.setUrl(subida.get("secure_url").toString());
+			multimedia.setPublicId(subida.get("public_id").toString());
+			multimedia.setFormato(subida.get("format").toString());
+			multimedia.setSizeBytes(Long.valueOf(subida.get("bytes").toString()));
+			archivoMultimediaRepository.save(multimedia);
+		} catch (IOException e) {
+			throw new RuntimeException("Error al subir la imagen a Cloudinary", e);
+		}
+	}
+
+	/**
+	 * Recalcula el estado del producto DERIVÁNDOLO de sus imágenes en revisión.
+	 *
+	 * <p>No se "flipea" un flag: se recalcula completo desde la fuente de verdad,
+	 * dentro de un lock pesimista, para que dos workers concurrentes no se pisen
+	 * (lost update) y para que el resultado no dependa del orden de llegada.</p>
+	 *
+	 * <p>{@code @Transactional} para poder invocarse también desde el worker (fuera
+	 * de otra transacción); cuando se llama internamente reutiliza la transacción
+	 * en curso.</p>
+	 */
+	@Transactional
+	public void recalcularEstado(Long productoId) {
+		Producto producto = productoRepository.findByIdForUpdate(productoId).orElse(null);
+		if (producto == null) {
+			return;
+		}
+		producto.setEstado(derivarEstado(imagenEnRevisionRepository.findByProductoId(productoId)));
+		productoRepository.save(producto);
+	}
+
+	/**
+	 * Deriva el estado del producto a partir de sus imágenes en revisión:
+	 * <ul>
+	 *   <li>Alguna {@code RECHAZADO} → {@code RECHAZADO} (una infracción tumba la publicación).</li>
+	 *   <li>Sin imágenes o todas {@code APROBADO} → {@code ACTIVO} (no hay nada pendiente).</li>
+	 *   <li>Alguna aún {@code PENDIENTE} → {@code PENDIENTE} (bloqueada hasta resolverse).</li>
+	 * </ul>
+	 */
+	private String derivarEstado(List<ImagenEnRevision> imagenes) {
+		boolean rechazado = imagenes.stream()
+				.anyMatch(imagen -> imagen.getEstadoModeracion() == EstadoModeracion.RECHAZADO);
+		if (rechazado) {
+			return ESTADO_RECHAZADO;
+		}
+		// Lista vacía ⇒ allMatch devuelve true ⇒ sin imágenes el producto se publica.
+		boolean todasAprobadas = imagenes.stream()
+				.allMatch(imagen -> imagen.getEstadoModeracion() == EstadoModeracion.APROBADO);
+		return todasAprobadas ? ESTADO_ACTIVO : ESTADO_PENDIENTE;
 	}
 
 	private Producto obtenerEntidad(Long id) {
@@ -118,6 +333,11 @@ public class ProductoService {
 		}
 	}
 
+	private String extension(String nombre) {
+		int punto = nombre.lastIndexOf('.');
+		return punto >= 0 ? nombre.substring(punto) : ".jpg";
+	}
+
 	private String normalizarCategoria(String categoria) {
 		if (categoria == null || categoria.isBlank()) {
 			return null;
@@ -127,13 +347,23 @@ public class ProductoService {
 
 	private String normalizarEstado(String estado) {
 		if (estado == null || estado.isBlank()) {
-			return "DISPONIBLE";
+			return ESTADO_ACTIVO;
 		}
 		String normalizado = estado.trim().toUpperCase(Locale.ROOT);
+		// "DISPONIBLE" es la nomenclatura anterior de "ACTIVO": se acepta como alias.
+		if (ESTADO_ACTIVO_LEGACY.equals(normalizado)) {
+			normalizado = ESTADO_ACTIVO;
+		}
 		if (!ESTADOS_VALIDOS.contains(normalizado)) {
-			throw new IllegalArgumentException("Estado inválido. Use: DISPONIBLE, VENDIDO o PAUSADO");
+			throw new IllegalArgumentException("Estado inválido. Use: ACTIVO, VENDIDO o PAUSADO");
 		}
 		return normalizado;
+	}
+
+	/** Normaliza el filtro de estado del catálogo (mayúsculas y alias DISPONIBLE → ACTIVO). */
+	private String normalizarFiltroEstado(String estado) {
+		String normalizado = estado.trim().toUpperCase(Locale.ROOT);
+		return ESTADO_ACTIVO_LEGACY.equals(normalizado) ? ESTADO_ACTIVO : normalizado;
 	}
 
 	/**
@@ -150,49 +380,6 @@ public class ProductoService {
 		ModerationResultDTO resultado = openAIModeracionService.analizar(texto);
 		if (resultado.getStatus() == ModerationStatus.REJECTED) {
 			throw new ContenidoInapropiadoException(resultado);
-		}
-	}
-
-	/**
-	 * Revisa que la foto del producto no contenga sustancias prohibidas ni armas.
-	 * Si las contiene, lanza {@code ContenidoInapropiadoException} y la imagen NO
-	 * se sube a Cloudinary ni se guarda en la BD.
-	 *
-	 * <p><b>Fail-closed (solo para la foto):</b> a diferencia del texto, aquí solo
-	 * se permite subir si la IA confirma explícitamente que es segura
-	 * ({@code APPROVED}). Si el veredicto es {@code REJECTED} —o {@code FAILED}
-	 * por caída/timeout de OpenAI— se rechaza y no se sube nada.</p>
-	 */
-	private void verificarImagen(File archivo) {
-		ModerationResultDTO resultado = visionAnalisisService.analizar(archivo);
-		if (resultado.getStatus() != ModerationStatus.APPROVED) {
-			throw new ContenidoInapropiadoException(resultado);
-		}
-	}
-
-	@Transactional
-	public String subirImagenProducto(Long productoId, MultipartFile file, Usuario usuario) {
-		try {
-			Producto producto = obtenerEntidad(productoId);
-			verificarPropietario(producto, usuario);
-
-			File processedFile = imageProcessingService.compressAndResizeImage(file);
-			// Tarea Visión: análisis de la foto ANTES de subirla a Cloudinary.
-			// Si contiene sustancias prohibidas/armas → se rechaza (422) y no se sube nada.
-			verificarImagen(processedFile);
-			Map uploadResult = cloudinaryService.uploadFile(processedFile);
-
-			ArchivoMultimedia archivo = new ArchivoMultimedia();
-			archivo.setProducto(producto);
-			archivo.setUrl(uploadResult.get("secure_url").toString());
-			archivo.setPublicId(uploadResult.get("public_id").toString());
-			archivo.setFormato(uploadResult.get("format").toString());
-			archivo.setSizeBytes(Long.valueOf(uploadResult.get("bytes").toString()));
-			archivoMultimediaRepository.save(archivo);
-
-			return archivo.getUrl();
-		} catch (IOException e) {
-			throw new RuntimeException("Error al procesar la imagen", e);
 		}
 	}
 }
