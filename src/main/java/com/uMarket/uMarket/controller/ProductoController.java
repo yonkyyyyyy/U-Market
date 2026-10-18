@@ -17,8 +17,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/productos")
@@ -64,5 +67,15 @@ public class ProductoController {
 	public void eliminar(@PathVariable Long id,
 						 @AuthenticationPrincipal UsuarioPrincipal principal) {
 		productoService.eliminar(id, principal.getUsuario());
+	}
+
+	@PostMapping("/{id}/imagen")
+	public Map<String, String> subirImagen(@PathVariable Long id,
+										 @RequestParam("archivo") MultipartFile archivo,
+										 @AuthenticationPrincipal UsuarioPrincipal principal) {
+		String url = productoService.subirImagenProducto(id, archivo, principal.getUsuario());
+		Map<String, String> response = new HashMap<>();
+		response.put("url", url);
+		return response;
 	}
 }
