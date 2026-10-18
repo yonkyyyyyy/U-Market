@@ -217,7 +217,7 @@
           <div>
 
             <label
-              for="email"
+              for="correo"
               class="mb-2 block text-sm font-semibold text-gray-700"
             >
               Correo electrónico
@@ -227,6 +227,7 @@
               id="correo"
               name="correo"
               type="email"
+              required
               [(ngModel)]="correo"
               placeholder="Wazaa@gmail.com"
               class="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-700 outline-none transition focus:border-green-700 focus:ring-2 focus:ring-green-100"
@@ -262,6 +263,7 @@
               id="password"
               name="password"
               type="password"
+              required
               [(ngModel)]="password"
               placeholder="Tu contraseña"
               class="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-700 outline-none transition focus:border-green-700 focus:ring-2 focus:ring-green-100"
@@ -271,11 +273,18 @@
 
 
 
+          @if (loginError) {
+            <p class="text-sm text-red-700" role="alert">
+              {{ loginError }}
+            </p>
+          }
+
           <button
             type="submit"
-            class="w-full rounded-lg bg-green-800 px-4 py-3 font-bold text-white transition hover:bg-green-900"
+            [disabled]="isLoggingIn"
+            class="w-full rounded-lg bg-green-800 px-4 py-3 font-bold text-white transition hover:bg-green-900 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Iniciar sesión
+            {{ isLoggingIn ? 'Iniciando sesión...' : 'Iniciar sesión' }}
           </button>
 
         </form>
