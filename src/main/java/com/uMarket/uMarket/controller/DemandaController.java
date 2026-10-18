@@ -1,11 +1,22 @@
 package com.uMarket.uMarket.controller;
 
-import com.uMarket.uMarket.dto.DemandaDto;
-import com.uMarket.uMarket.dto.DemandaRequest;
+import com.uMarket.uMarket.dto.DemandaRequestDTO;
+import com.uMarket.uMarket.dto.DemandaResponseDTO;
+import com.uMarket.uMarket.dto.ProductoDto;
 import com.uMarket.uMarket.security.UsuarioPrincipal;
 import com.uMarket.uMarket.service.DemandaService;
+import com.uMarket.uMarket.service.EmparejamientoService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,54 +25,82 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/demandas")
+@Tag(name = "Demandas (Se Busca)", description = "Creación, consulta, actualización y eliminación de demandas del módulo Se Busca")
 public class DemandaController {
 
 	private final DemandaService demandaService;
+	private final EmparejamientoService emparejamientoService;
 
-	public DemandaController(DemandaService demandaService) {
+	public DemandaController(DemandaService demandaService, EmparejamientoService emparejamientoService) {
 		this.demandaService = demandaService;
+		this.emparejamientoService = emparejamientoService;
 	}
 
+	// POST /api/demandas -> 201 Created (usuario tomado del JWT/SecurityContext en el servicio)
+	@Operation(summary = "Crear una demanda",
+			description = "Crea una demanda en estado ACTIVA para el usuario autenticado (extraído del JWT). "
+					+ "Requiere cabecera `Authorization: Bearer <token>`.")
+	@ApiResponses({
+			@ApiResponse(responseCode = "201", description = "Demanda creada correctamente"),
+			@ApiResponse(responseCode = "400", description = "Datos de entrada inválidos"),
+			@ApiResponse(responseCode = "401", description = "Falta token JWT o es inválido")
+	})
+	@PostMapping
+	public ResponseEntity<DemandaResponseDTO> crear(@Valid @RequestBody DemandaRequestDTO request) {
+		DemandaResponseDTO creada = demandaService.crear(request);
+		return ResponseEntity.status(HttpStatus.CREATED).body(creada);
+	}
+
+	// GET /api/demandas?estado=ACTIVA&page=0&size=10 -> 200 OK
 	@GetMapping
-	public List<DemandaDto> listar() {
-		return demandaService.listarTodas();
+	public ResponseEntity<Page<DemandaResponseDTO>> listarTodas(
+			@RequestParam(required = false) String estado,
+			@PageableDefault(size = 10, sort = "fechaCreacion", direction = Sort.Direction.DESC) Pageable pageable) {
+		return ResponseEntity.ok(demandaService.listarTodas(estado, pageable));
 	}
 
+	// GET /api/demandas/mis-demandas -> 200 OK (solo las del token activo)
+	@GetMapping("/mis-demandas")
+	public ResponseEntity<Page<DemandaResponseDTO>> listarMisDemandas(
+			@PageableDefault(size = 10, sort = "fechaCreacion", direction = Sort.Direction.DESC) Pageable pageable) {
+		return ResponseEntity.ok(demandaService.listarMisDemandas(pageable));
+	}
+
+	// Alias legacy: GET /api/demandas/mias
 	@GetMapping("/mias")
-	public List<DemandaDto> listarMias(@AuthenticationPrincipal UsuarioPrincipal principal) {
-		return demandaService.listarPorUsuario(principal.getUsuario());
+	public ResponseEntity<Page<DemandaResponseDTO>> listarMias(
+			@PageableDefault(size = 10, sort = "fechaCreacion", direction = Sort.Direction.DESC) Pageable pageable) {
+		return ResponseEntity.ok(demandaService.listarMisDemandas(pageable));
 	}
 
 	@GetMapping("/{id}")
-	public DemandaDto obtener(@PathVariable Long id) {
-		return demandaService.obtener(id);
+	public ResponseEntity<DemandaResponseDTO> obtener(@PathVariable Long id) {
+		return ResponseEntity.ok(demandaService.obtener(id));
 	}
 
-	@PostMapping
-	@ResponseStatus(HttpStatus.CREATED)
-	public DemandaDto crear(@Valid @RequestBody DemandaRequest request,
-							@AuthenticationPrincipal UsuarioPrincipal principal) {
-		return demandaService.crear(principal.getUsuario(), request);
+	// GET /api/demandas/{id}/sugerencias -> 200 OK (productos DISPONIBLE de otros usuarios)
+	@GetMapping("/{id}/sugerencias")
+	public ResponseEntity<List<ProductoDto>> sugerencias(@PathVariable Long id) {
+		return ResponseEntity.ok(emparejamientoService.buscarProductosSugeridosParaDemanda(id));
 	}
 
 	@PutMapping("/{id}")
-	public DemandaDto actualizar(@PathVariable Long id,
-								 @Valid @RequestBody DemandaRequest request,
-								 @AuthenticationPrincipal UsuarioPrincipal principal) {
-		return demandaService.actualizar(id, principal.getUsuario(), request);
+	public ResponseEntity<DemandaResponseDTO> actualizar(@PathVariable Long id,
+			@Valid @RequestBody DemandaRequestDTO request) {
+		return ResponseEntity.ok(demandaService.actualizar(id, request));
 	}
 
 	@DeleteMapping("/{id}")
-	@ResponseStatus(HttpStatus.NO_CONTENT)
-	public void eliminar(@PathVariable Long id,
-						 @AuthenticationPrincipal UsuarioPrincipal principal) {
+	public ResponseEntity<Void> eliminar(@PathVariable Long id,
+			@AuthenticationPrincipal UsuarioPrincipal principal) {
 		demandaService.eliminar(id, principal.getUsuario());
+		return ResponseEntity.noContent().build();
 	}
 }
