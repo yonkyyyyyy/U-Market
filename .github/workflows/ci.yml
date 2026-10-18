@@ -51,8 +51,4 @@ jobs:
 
     # 4. Construye el proyecto y ejecuta las pruebas
     - name: Compilar y Testear con Maven
-      env:
-        SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/U-Market
-        SPRING_DATASOURCE_USERNAME: postgres
-        SPRING_DATASOURCE_PASSWORD: 15262005
       run: ./mvnw clean verify
