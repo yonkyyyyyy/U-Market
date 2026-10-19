@@ -26,7 +26,7 @@ public class LocalStorageService implements StorageService {
 
     private final Path raiz;
 
-    public LocalStorageService(@Value("${uploads.staging-path:uploads/staging}") String ruta) {
+        public LocalStorageService(@Value("${uploads.staging-path:/tmp/uploads/staging}") String ruta) {
         this.raiz = Paths.get(ruta).toAbsolutePath().normalize();
         try {
             Files.createDirectories(raiz);
@@ -35,6 +35,7 @@ public class LocalStorageService implements StorageService {
         }
         log.info("Staging de imágenes en: {}", raiz);
     }
+
 
     @Override
     public String guardar(File archivo) {

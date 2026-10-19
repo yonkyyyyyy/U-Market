@@ -57,7 +57,8 @@ jobs:
     name: Desplegar en Google Cloud
     needs: build-and-test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/devOsQa'
+    # SOLO despliega si el push/merge ocurre en develop, main o  rama de pruebas 
+    if: github.ref == 'refs/heads/devOsQa' || github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
     
     steps:
       - name: Conectar al servidor por SSH y levantar Docker
@@ -68,10 +69,25 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             if [ ! -d "U-Market" ]; then
-              git clone -b devOsQa https://github.com/yonkyyyyyy/U-Market.git
+              git clone https://github.com/yonkyyyyyy/U-Market.git
             fi
             cd U-Market
-            git pull origin devOsQa
+            
+            # Descarga todas las ramas y cambia automáticamente a la que disparó la acción
+            git fetch --all
+            git checkout ${{ github.ref_name }}
+            git pull origin ${{ github.ref_name }}
+            
+            # Construye el archivo .env con todas las credenciales obligatorias
+            cat <<EOF > .env
+            RABBITMQ_PASSWORD=15262005
+            RABBITMQ_USERNAME=umarket
+            CLOUDINARY_CLOUD_NAME=test
+            CLOUDINARY_API_KEY=test
+            CLOUDINARY_API_SECRET=test
+            OPENAI_API_KEY=test
+            IA_INTERNAL_API_KEY=test
+            EOF
+            
             docker compose down
             docker compose up -d --build
-
