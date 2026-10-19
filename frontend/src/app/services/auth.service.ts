@@ -7,6 +7,12 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface RegisterRequest {
+  nombre: string;
+  correo: string;
+  password: string;
+}
+
 export interface User {
   id: number;
   nombre: string;
@@ -31,6 +37,10 @@ export class AuthService {
 
   login(request: LoginRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(this.loginUrl, request);
+  }
+
+  register(request: RegisterRequest): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>('/api/auth/register', request);
   }
 
   saveSession(response: AuthResponse): void {

@@ -28,8 +28,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/demandas")
 @Tag(name = "Demandas (Se Busca)", description = "Creación, consulta, actualización y eliminación de demandas del módulo Se Busca")

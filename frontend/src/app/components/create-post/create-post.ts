@@ -1,64 +1,65 @@
-import { Component } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { ProductService } from '../../services/product.service';
+import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-create-post',
-  imports: [],
+  imports: [FormsModule],
   templateUrl: './create-post.html',
   styleUrl: './create-post.css'
 })
 export class CreatePost {
+  private readonly productService = inject(ProductService);
+  private readonly toastService = inject(ToastService);
 
-  showImageUpload = false;
-  selectedImage: string | null = null;
-
-  toggleImageUpload(): void {
-    this.showImageUpload = !this.showImageUpload;
-
-    
-    if (!this.showImageUpload) {
-      this.selectedImage = null;
-    }
-  }
-
-  onImageSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-
-    if (!input.files || input.files.length === 0) {
-      return;
-    }
-
-    const file = input.files[0];
-
-    
-    if (!file.type.startsWith('image/')) {
-      alert('Por favor selecciona una imagen válida.');
-      return;
-    }
-
-    
-    if (file.size > 5 * 1024 * 1024) {
-      alert('La imagen no puede superar los 5 MB.');
-      return;
-    }
-
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      this.selectedImage = reader.result as string;
-    };
-
-    reader.readAsDataURL(file);
-  }
-
-  removeImage(): void {
-    this.selectedImage = null;
-  }
+  title = '';
+  description = '';
+  price: number | null = null;
+  isPublishing = false;
+  publishError = '';
 
   publish(): void {
-    console.log('Publicación preparada');
+    const title = this.title.trim();
+    const price = Number(this.price);
 
-    console.log({
-      image: this.selectedImage
+    if (!title || this.price === null || !Number.isFinite(price) || price <= 0) {
+      this.publishError = 'Escribe un título y un precio mayor que cero.';
+      return;
+    }
+
+    this.isPublishing = true;
+    this.publishError = '';
+
+    this.productService.create({
+      titulo: title,
+      descripcion: this.description.trim(),
+      precio: price
+    }).subscribe({
+      next: () => {
+        this.title = '';
+        this.description = '';
+        this.price = null;
+        this.isPublishing = false;
+        this.toastService.success('Publicación creada', 'Tu producto ya aparece en el muro.');
+      },
+      error: (error: unknown) => {
+        this.isPublishing = false;
+        this.publishError = this.getErrorMessage(error);
+      }
     });
+  }
+
+  private getErrorMessage(error: unknown): string {
+    if (error instanceof HttpErrorResponse && error.status === 401) {
+      return 'Inicia sesión para publicar un producto.';
+    }
+
+    if (error instanceof HttpErrorResponse && typeof error.error?.message === 'string') {
+      return error.error.message;
+    }
+
+    return 'No se pudo publicar el producto. Revisa tu conexión e inténtalo de nuevo.';
   }
 }

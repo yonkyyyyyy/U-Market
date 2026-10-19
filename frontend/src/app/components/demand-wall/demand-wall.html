@@ -1,0 +1,189 @@
+<section class="demand-wall" aria-labelledby="demand-wall-title">
+  <header class="wall-heading">
+    <div class="wall-heading__copy">
+      <p class="wall-kicker"><span></span> EL MERCADO AL REVÉS</p>
+      <h2 id="demand-wall-title">Se busca<span>.</span></h2>
+      <p>¿Te falta algo para el ciclo? Pídelo aquí. Quizá alguien de tu campus lo tiene.</p>
+    </div>
+    <button class="post-request-button" type="button" (click)="openForm()">
+      <span aria-hidden="true">＋</span>
+      Publicar una búsqueda
+    </button>
+  </header>
+
+  <div class="wall-note" role="note">
+    <span class="wall-note__icon" aria-hidden="true">i</span>
+    <p>
+      Las solicitudes y su categoría se guardan en el servidor. Campus y vigencia son datos temporales
+      del frontend hasta que la API los admita.
+    </p>
+  </div>
+
+  <div class="wall-tools">
+    <label class="search-field">
+      <span class="sr-only">Buscar solicitudes</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="10.8" cy="10.8" r="6.8"></circle>
+        <path d="m16 16 4.3 4.3"></path>
+      </svg>
+      <input
+        type="search"
+        name="search"
+        [(ngModel)]="searchTerm"
+        placeholder="Busca libros, calculadoras, apuntes...">
+    </label>
+
+    <label class="filter-field">
+      <span class="sr-only">Filtrar por categoría</span>
+      <select name="categoryFilter" [(ngModel)]="selectedCategory">
+        <option value="">Todas las categorías</option>
+        @for (category of categories; track category) {
+          <option [value]="category">{{ category }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="filter-field">
+      <span class="sr-only">Filtrar por campus</span>
+      <select name="campusFilter" [(ngModel)]="selectedCampus">
+        <option value="">Todos los campus</option>
+        @for (campus of campuses; track campus) {
+          <option [value]="campus">{{ campus }}</option>
+        }
+      </select>
+    </label>
+
+    <button
+      class="refresh-button"
+      type="button"
+      aria-label="Actualizar solicitudes"
+      [disabled]="isLoading()"
+      (click)="loadDemands()">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M20 7v5h-5"></path>
+        <path d="M4.8 9a7.5 7.5 0 0 1 12.6-2L20 9M4 17v-5h5"></path>
+        <path d="M19.2 15a7.5 7.5 0 0 1-12.6 2L4 15"></path>
+      </svg>
+    </button>
+  </div>
+
+  <div class="wall-results">
+    <p class="results-count">
+      @if (isLoading()) {
+        Buscando en el muro…
+      } @else if (pageError()) {
+        Muro no disponible
+      } @else if (searchTerm || selectedCategory || selectedCampus) {
+        {{ filteredDemands().length }} coincidencias en las solicitudes cargadas
+      } @else {
+        {{ totalElements() }} {{ totalElements() === 1 ? 'solicitud' : 'solicitudes' }}
+      }
+    </p>
+    <span class="results-rule"></span>
+    @if (!pageError()) {
+      <p class="results-sort">Más recientes</p>
+    }
+  </div>
+
+  @if (pageError() && !isLoading()) {
+    <div class="wall-state wall-state--error" role="alert">
+      <p>{{ pageError() }}</p>
+      <button type="button" (click)="loadDemands()">Reintentar</button>
+    </div>
+  } @else if (isLoading()) {
+    <div class="demand-list" aria-label="Cargando solicitudes">
+      @for (placeholder of [1, 2, 3]; track placeholder) {
+        <div class="demand-card demand-card--loading" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+      }
+    </div>
+  } @else if (filteredDemands().length === 0) {
+    <div class="wall-state">
+      <span class="empty-mark" aria-hidden="true">?</span>
+      @if (demands().length === 0) {
+        <h3>El muro todavía está en blanco.</h3>
+        <p>Publica lo que estás buscando y dale a alguien una buena razón para escribirte.</p>
+        <button class="post-request-button" type="button" (click)="openForm()">Publicar la primera búsqueda</button>
+      } @else {
+        <h3>No encontramos esa búsqueda.</h3>
+        <p>
+          Prueba con otros términos o quita algún filtro.
+          @if (hasMore()) { También puedes revisar la siguiente página. }
+        </p>
+        <div class="empty-actions">
+          <button class="text-button" type="button" (click)="resetFilters()">Limpiar filtros</button>
+          @if (hasMore()) {
+            <button class="load-more-button" type="button" (click)="loadDemands(true)">
+              Ver más solicitudes
+            </button>
+          }
+        </div>
+      }
+    </div>
+  } @else {
+    <div class="demand-list">
+      @for (demand of filteredDemands(); track demand.id) {
+        <article class="demand-card">
+          <div class="demand-card__main">
+            <div class="demand-card__meta">
+              <span class="category-tag">{{ categoryFor(demand) }}</span>
+              <span class="published-date">Publicado {{ publishedAt(demand) }}</span>
+            </div>
+            <h3>{{ demand.titulo }}</h3>
+            @if (demand.descripcion) {
+              <p class="demand-description">{{ demand.descripcion }}</p>
+            }
+            <div class="demand-card__details">
+              <span>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"></path>
+                  <circle cx="12" cy="10" r="2.5"></circle>
+                </svg>
+                {{ campusFor(demand) }}
+              </span>
+              <span>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9"></circle>
+                  <path d="M12 7v5l3 2"></path>
+                </svg>
+                @if (validUntil(demand) === 'Vigencia no definida') {
+                  {{ validUntil(demand) }}
+                } @else {
+                  Hasta {{ validUntil(demand) }}
+                }
+              </span>
+            </div>
+          </div>
+          <aside class="demand-card__aside">
+            <span class="budget-label">PRESUPUESTO</span>
+            <strong>{{ budgetFor(demand) }}</strong>
+            <div class="requester">
+              <span class="requester__avatar">{{ initials(demand.usuarioNombre) }}</span>
+              <span class="requester__name">{{ demand.usuarioNombre }}</span>
+            </div>
+          </aside>
+        </article>
+      }
+    </div>
+    @if (hasMore()) {
+      <div class="load-more-row">
+        <button
+          class="load-more-button"
+          type="button"
+          [disabled]="isLoadingMore()"
+          (click)="loadDemands(true)">
+          {{ isLoadingMore() ? 'Cargando…' : 'Cargar más solicitudes' }}
+        </button>
+      </div>
+    }
+  }
+
+  @if (isFormOpen()) {
+    <app-demand-request-form
+      [submitting]="isSubmitting()"
+      (submitted)="createDemand($event)"
+      (cancelled)="closeForm()">
+    </app-demand-request-form>
+  }
+</section>

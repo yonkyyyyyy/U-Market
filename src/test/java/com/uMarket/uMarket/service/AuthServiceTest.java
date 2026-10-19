@@ -52,7 +52,7 @@ class AuthServiceTest {
 		when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
 		when(jwtService.generateToken(any(Usuario.class))).thenReturn("tokenJwt");
 
-		RegisterRequest request = new RegisterRequest("Ana Torres", "Ana@UTP.EDU.PE", "password123", null);
+		RegisterRequest request = new RegisterRequest("Ana Torres", "Ana@UTP.EDU.PE", "password123");
 
 		AuthResponse response = authService.register(request);
 
@@ -69,7 +69,7 @@ class AuthServiceTest {
 
 	@Test
 	void registerRechazaCorreoFueraDelDominioUtp() {
-		RegisterRequest request = new RegisterRequest("Ana", "ana@gmail.com", "password123", null);
+		RegisterRequest request = new RegisterRequest("Ana", "ana@gmail.com", "password123");
 
 		assertThatThrownBy(() -> authService.register(request))
 				.isInstanceOf(IllegalArgumentException.class)
@@ -81,7 +81,7 @@ class AuthServiceTest {
 	@Test
 	void registerRechazaCorreoDuplicado() {
 		when(usuarioRepository.existsByCorreoInstitucional("ana@utp.edu.pe")).thenReturn(true);
-		RegisterRequest request = new RegisterRequest("Ana", "ana@utp.edu.pe", "password123", null);
+		RegisterRequest request = new RegisterRequest("Ana", "ana@utp.edu.pe", "password123");
 
 		assertThatThrownBy(() -> authService.register(request))
 				.isInstanceOf(IllegalArgumentException.class)
