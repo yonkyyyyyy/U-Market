@@ -1,0 +1,118 @@
+<div class="form-backdrop" (click)="closeOnBackdrop($event)">
+  <section
+    class="request-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="request-title">
+    <header class="request-dialog__header">
+      <div>
+        <p class="eyebrow">NUEVA SOLICITUD</p>
+        <h2 id="request-title">¿Qué estás buscando?</h2>
+        <p class="request-dialog__intro">Cuéntale a tu comunidad qué te hace falta.</p>
+      </div>
+      <button
+        class="icon-button"
+        type="button"
+        aria-label="Cerrar formulario"
+        (click)="cancelled.emit()">
+        ×
+      </button>
+    </header>
+
+    <form (ngSubmit)="submit()" #requestForm="ngForm">
+      <div class="form-field">
+        <label for="request-title-input">Lo que buscas <span>*</span></label>
+        <input
+          id="request-title-input"
+          name="titulo"
+          type="text"
+          required
+          maxlength="150"
+          [(ngModel)]="titulo"
+          placeholder="Ej. Calculadora científica Casio fx-991">
+      </div>
+
+      <div class="form-row">
+        <div class="form-field">
+          <label for="request-category">Categoría <span>*</span></label>
+          <select
+            id="request-category"
+            name="categoria"
+            required
+            [(ngModel)]="categoria">
+            <option value="" disabled>Elige una categoría</option>
+            @for (option of categories; track option) {
+              <option [value]="option">{{ option }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label for="request-campus">Campus <span>*</span></label>
+          <select
+            id="request-campus"
+            name="campus"
+            required
+            [(ngModel)]="campus">
+            <option value="" disabled>Elige un campus</option>
+            @for (option of campuses; track option) {
+              <option [value]="option">{{ option }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label for="request-description">Más detalles <span class="label-note">OPCIONAL</span></label>
+        <textarea
+          id="request-description"
+          name="descripcion"
+          rows="3"
+          maxlength="1000"
+          [(ngModel)]="descripcion"
+          placeholder="Modelo, edición, estado o cualquier detalle que ayude."></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-field">
+          <label for="request-budget">Presupuesto máximo <span class="label-note">OPCIONAL</span></label>
+          <div class="budget-input">
+            <span aria-hidden="true">S/</span>
+            <input
+              id="request-budget"
+              name="presupuesto"
+              type="number"
+              min="0.01"
+              step="0.01"
+              [(ngModel)]="presupuesto"
+              placeholder="A convenir">
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="request-validity">Visible durante <span>*</span></label>
+          <select id="request-validity" name="vigencia" [(ngModel)]="vigencia">
+            @for (option of validityOptions; track option.days) {
+              <option [ngValue]="option.days">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <p class="form-note">
+        La categoría se guarda en el servidor. Campus y vigencia se muestran solo durante esta sesión.
+      </p>
+
+      <footer class="request-dialog__actions">
+        <button class="button button--quiet" type="button" (click)="cancelled.emit()">Cancelar</button>
+        <button
+          class="button button--primary"
+          type="submit"
+          [disabled]="requestForm.invalid || submitting">
+          {{ submitting ? 'Publicando…' : 'Publicar solicitud' }}
+          <span aria-hidden="true">↗</span>
+        </button>
+      </footer>
+    </form>
+  </section>
+</div>

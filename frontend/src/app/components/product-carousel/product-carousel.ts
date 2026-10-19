@@ -1,12 +1,7 @@
-import { Component } from '@angular/core';
-
-interface Product {
-  id: number;
-  image: string;
-  name: string;
-  price: string;
-  seller: string;
-}
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, inject, signal } from '@angular/core';
+import { AuthService } from '../../services/auth.service';
+import { Product, ProductService } from '../../services/product.service';
 
 @Component({
   selector: 'app-product-carousel',
@@ -15,52 +10,55 @@ interface Product {
   styleUrl: './product-carousel.css'
 })
 export class ProductCarousel {
+  private readonly productService = inject(ProductService);
+  private readonly authService = inject(AuthService);
 
+  readonly products = this.productService.products;
+  readonly isLoading = signal(true);
+  readonly loadError = signal('');
   currentSlide = 0;
 
-  products: Product[] = [
-    {
-      id: 1,
-      image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3',
-      name: 'Laptop para estudiante',
-      price: 'S/ 1,200',
-      seller: 'Carlos Mendoza'
-    },
-    {
-      id: 2,
-      image: 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed',
-      name: 'Laptop HP',
-      price: 'S/ 950',
-      seller: 'Ana Torres'
-    },
-    {
-      id: 3,
-      image: 'https://images.unsplash.com/photo-1541807084-5c52b6b3adef',
-      name: 'MacBook Air',
-      price: 'S/ 2,500',
-      seller: 'Luis Ramírez'
-    },
-    {
-      id: 4,
-      image: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853',
-      name: 'Laptop Lenovo',
-      price: 'S/ 1,100',
-      seller: 'María López'
+  constructor() {
+    if (!this.authService.getToken()) {
+      this.isLoading.set(false);
+      this.loadError.set('Inicia sesión para ver las publicaciones.');
+      return;
     }
-  ];
+
+    this.productService.list().subscribe({
+      next: () => this.isLoading.set(false),
+      error: (error: unknown) => {
+        this.isLoading.set(false);
+        this.loadError.set(
+          error instanceof HttpErrorResponse && error.status === 401
+            ? 'Tu sesión venció. Inicia sesión de nuevo para ver las publicaciones.'
+            : 'No se pudieron cargar las publicaciones. Inténtalo de nuevo más tarde.'
+        );
+      }
+    });
+  }
 
   nextSlide(): void {
-    this.currentSlide =
-      (this.currentSlide + 1) % this.products.length;
+    if (this.products().length > 0) {
+      this.currentSlide = (this.currentSlide + 1) % this.products().length;
+    }
   }
 
   previousSlide(): void {
-    this.currentSlide =
-      (this.currentSlide - 1 + this.products.length) %
-      this.products.length;
+    const length = this.products().length;
+    if (length > 0) {
+      this.currentSlide = (this.currentSlide - 1 + length) % length;
+    }
   }
 
   goToSlide(index: number): void {
     this.currentSlide = index;
+  }
+
+  formatPrice(product: Product): string {
+    return new Intl.NumberFormat('es-PE', {
+      style: 'currency',
+      currency: 'PEN'
+    }).format(product.precio);
   }
 }

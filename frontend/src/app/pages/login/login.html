@@ -356,6 +356,7 @@
               id="name"
               name="name"
               type="text"
+              required
               [(ngModel)]="name"
               placeholder="Tu nombre"
               class="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-700 outline-none transition focus:border-green-700 focus:ring-2 focus:ring-green-100"
@@ -378,6 +379,7 @@
               id="lastName"
               name="lastName"
               type="text"
+              required
               [(ngModel)]="lastName"
               placeholder="Tu apellido"
               class="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-700 outline-none transition focus:border-green-700 focus:ring-2 focus:ring-green-100"
@@ -400,8 +402,10 @@
               id="registerEmail"
               name="registerEmail"
               type="email"
+              required
+              pattern="^[A-Za-z0-9._%+-]+@utp\.edu\.pe$"
               [(ngModel)]="registerEmail"
-              placeholder="tu@correo.com"
+              placeholder="tu@utp.edu.pe"
               class="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-700 outline-none transition focus:border-green-700 focus:ring-2 focus:ring-green-100"
             />
 
@@ -422,6 +426,8 @@
               id="registerPassword"
               name="registerPassword"
               type="password"
+              required
+              minlength="8"
               [(ngModel)]="registerPassword"
               placeholder="Crea una contraseña"
               class="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-700 outline-none transition focus:border-green-700 focus:ring-2 focus:ring-green-100"
@@ -444,6 +450,8 @@
               id="confirmPassword"
               name="confirmPassword"
               type="password"
+              required
+              minlength="8"
               [(ngModel)]="confirmPassword"
               placeholder="Repite tu contraseña"
               class="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-700 outline-none transition focus:border-green-700 focus:ring-2 focus:ring-green-100"
@@ -453,11 +461,16 @@
 
 
 
+          @if (registerError) {
+            <p class="text-sm text-red-700" role="alert">{{ registerError }}</p>
+          }
+
           <button
             type="submit"
-            class="w-full rounded-lg bg-green-800 px-4 py-3 font-bold text-white transition hover:bg-green-900"
+            [disabled]="isRegistering"
+            class="w-full rounded-lg bg-green-800 px-4 py-3 font-bold text-white transition hover:bg-green-900 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Crear cuenta
+            {{ isRegistering ? 'Creando cuenta…' : 'Crear cuenta' }}
           </button>
 
         </form>
