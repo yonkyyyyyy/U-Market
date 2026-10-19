@@ -78,15 +78,15 @@ jobs:
             git checkout ${{ github.ref_name }}
             git pull origin ${{ github.ref_name }}
             
-            # Construye el archivo .env con todas las credenciales obligatorias
+            # Construye el archivo .env leyendo las llaves encriptadas de GitHub
             cat <<EOF > .env
-            RABBITMQ_PASSWORD=15262005
             RABBITMQ_USERNAME=umarket
-            CLOUDINARY_CLOUD_NAME=test
-            CLOUDINARY_API_KEY=test
-            CLOUDINARY_API_SECRET=test
-            OPENAI_API_KEY=test
-            IA_INTERNAL_API_KEY=test
+            RABBITMQ_PASSWORD=${{ secrets.RABBITMQ_PASSWORD }}
+            CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}
+            CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}
+            CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}
+            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+            IA_INTERNAL_API_KEY=${{ secrets.IA_INTERNAL_API_KEY }}
             EOF
             
             docker compose down
