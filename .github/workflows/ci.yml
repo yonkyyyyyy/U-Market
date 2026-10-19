@@ -72,6 +72,9 @@ jobs:
             fi
             cd U-Market
             git pull origin devOsQa
+            
+            # Crea el archivo oculto .env con la variable requerida
+            echo "RABBITMQ_PASSWORD=15262005" > .env
+            
             docker compose down
             docker compose up -d --build
-
