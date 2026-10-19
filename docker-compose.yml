@@ -46,6 +46,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/U-Market
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: 15262005
+      UPLOADS_STAGING_PATH: /tmp/uploads/staging   # <--- AGREGA ESTA LÍNEA para la ruta modificada
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-umarket}
