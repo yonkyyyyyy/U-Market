@@ -72,6 +72,17 @@ jobs:
             fi
             cd U-Market
             git pull origin devOsQa
+            
+            # Construye el archivo .env con todas las credenciales obligatorias
+            cat <<EOF > .env
+            RABBITMQ_PASSWORD=15262005
+            RABBITMQ_USERNAME=umarket
+            CLOUDINARY_CLOUD_NAME=test
+            CLOUDINARY_API_KEY=test
+            CLOUDINARY_API_SECRET=test
+            OPENAI_API_KEY=test
+            IA_INTERNAL_API_KEY=test
+            EOF
+            
             docker compose down
             docker compose up -d --build
-
