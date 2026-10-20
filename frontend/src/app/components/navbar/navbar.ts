@@ -1,9 +1,8 @@
-import { Component, computed, inject, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
-import { AuthService } from '../../services/auth.service';
+import { Component } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
 @Component({
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink],
   selector: 'app-navbar',
   styleUrl: './navbar.css',
   templateUrl: './navbar.html',
