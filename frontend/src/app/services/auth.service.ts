@@ -51,4 +51,22 @@ export class AuthService {
   getToken(): string | null {
     return sessionStorage.getItem(this.tokenKey);
   }
+
+  getUser(): User | null {
+    const rawUser = sessionStorage.getItem(this.userKey);
+    if (!rawUser) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(rawUser) as User;
+    } catch {
+      return null;
+    }
+  }
+
+  isAdmin(): boolean {
+    const role = this.getUser()?.rol?.toUpperCase();
+    return role === 'ADMIN' || role === 'ADMINISTRADOR';
+  }
 }

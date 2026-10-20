@@ -48,10 +48,10 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<Map<String, Object>> handleContenidoInapropiado(ContenidoInapropiadoException ex) {
 		Map<String, Object> body = new LinkedHashMap<>();
 		body.put("timestamp", LocalDateTime.now());
-		body.put("status", HttpStatus.UNPROCESSABLE_ENTITY.value());
+		body.put("status", 422);
 		body.put("message", ex.getMessage());
 		body.put("categorias", ex.getResultado().getCategoriasDetectadas());
-		return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(body);
+		return ResponseEntity.status(422).body(body);
 	}
 
 	private ResponseEntity<Map<String, Object>> build(HttpStatus status, String message) {
