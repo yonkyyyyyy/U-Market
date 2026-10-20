@@ -1,144 +1,70 @@
-<section class="relative w-full">
-
-  <div class="relative h-64 md:h-80 overflow-hidden rounded-xl">
-
-    @for (product of products; track product.id; let i = $index) {
-
-      @if (i === currentSlide) {
-
-        <div class="absolute inset-0 duration-500">
-
-          <img
-            [src]="product.image"
-            [alt]="product.name"
-            class="absolute block w-full h-full object-cover"
-          />
-
-          <div class="absolute inset-0 bg-black/35"></div>
-
-          <div class="absolute bottom-0 left-0 right-0 p-6 text-white">
-
-            <p class="text-sm opacity-90">
-              Producto destacado
-            </p>
-
-            <h2 class="text-2xl font-semibold">
-              {{ product.name }}
-            </h2>
-
-            <div class="flex items-center justify-between mt-2">
-
-              <div>
-                <p class="text-lg font-medium">
-                  {{ product.price }}
-                </p>
-
-                <p class="text-sm opacity-90">
-                  Publicado por {{ product.seller }}
-                </p>
+<section class="relative w-full" aria-label="Publicaciones recientes">
+  @if (isLoading()) {
+    <div class="flex h-64 items-center justify-center rounded-xl border border-gray-200 bg-white text-sm text-gray-500">
+      Cargando publicaciones…
+    </div>
+  } @else if (loadError()) {
+    <div class="flex h-64 items-center justify-center rounded-xl border border-gray-200 bg-white px-6 text-center text-sm text-gray-600">
+      {{ loadError() }}
+    </div>
+  } @else if (products().length === 0) {
+    <div class="flex h-64 flex-col items-center justify-center rounded-xl border border-gray-200 bg-white px-6 text-center">
+      <p class="text-lg font-semibold text-gray-900">Aún no hay productos publicados</p>
+      <p class="mt-2 text-sm text-gray-500">Cuando publiques un producto, aparecerá aquí.</p>
+    </div>
+  } @else {
+    <div class="relative h-64 overflow-hidden rounded-xl bg-gradient-to-br from-emerald-900 via-teal-800 to-slate-900 md:h-80">
+      @for (product of products(); track product.id; let i = $index) {
+        @if (i === currentSlide) {
+          <div class="absolute inset-0 flex items-end p-6 text-white md:p-8">
+            <div class="w-full">
+              <p class="text-sm opacity-80">Producto disponible</p>
+              <h2 class="mt-1 text-2xl font-semibold">{{ product.titulo }}</h2>
+              @if (product.descripcion) {
+                <p class="mt-2 line-clamp-2 max-w-2xl text-sm opacity-90">{{ product.descripcion }}</p>
+              }
+              <div class="mt-4 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p class="text-lg font-medium">{{ formatPrice(product) }}</p>
+                  <p class="text-sm opacity-80">Publicado por {{ product.vendedorNombre }}</p>
+                </div>
+                <span class="rounded-full bg-white/15 px-3 py-1 text-xs">Disponible</span>
               </div>
-
-              <button
-                type="button"
-                class="px-4 py-2 text-sm font-medium bg-white text-gray-900 rounded-lg hover:bg-gray-100">
-                Ver publicación
-              </button>
-
             </div>
-
           </div>
-
-        </div>
-
+        }
       }
 
-    }
+      @if (products().length > 1) {
+        <div class="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 gap-2">
+          @for (product of products(); track product.id; let i = $index) {
+            <button
+              type="button"
+              (click)="goToSlide(i)"
+              [attr.aria-label]="'Ir al producto ' + (i + 1)"
+              [attr.aria-current]="i === currentSlide"
+              [class.w-6]="i === currentSlide"
+              [class.w-2]="i !== currentSlide"
+              class="h-2 rounded-full bg-white transition-all">
+            </button>
+          }
+        </div>
 
-  </div>
-
-
-  <div class="absolute z-10 flex -translate-x-1/2 bottom-4 left-1/2 space-x-2">
-
-    @for (product of products; track product.id; let i = $index) {
-
-      <button
-        type="button"
-        (click)="goToSlide(i)"
-        [attr.aria-current]="i === currentSlide"
-        [attr.aria-label]="'Ir a producto ' + (i + 1)"
-        [class.w-6]="i === currentSlide"
-        [class.w-2]="i !== currentSlide"
-        class="h-2 rounded-full bg-white transition-all">
-      </button>
-
-    }
-
-  </div>
-
-
-  <!-- Anterior -->
-  <button
-    type="button"
-    (click)="previousSlide()"
-    class="absolute top-0 start-0 z-10 flex items-center justify-center h-full px-4 cursor-pointer group focus:outline-none">
-
-    <span
-      class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/30 group-hover:bg-white/50">
-
-      <svg
-        class="w-5 h-5 text-white"
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        viewBox="0 0 24 24">
-
-        <path
-          stroke="currentColor"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="m15 19-7-7 7-7"/>
-
-      </svg>
-
-      <span class="sr-only">
-        Anterior
-      </span>
-
-    </span>
-
-  </button>
-
-
-  <!-- Siguiente -->
-  <button
-    type="button"
-    (click)="nextSlide()"
-    class="absolute top-0 end-0 z-10 flex items-center justify-center h-full px-4 cursor-pointer group focus:outline-none">
-
-    <span
-      class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/30 group-hover:bg-white/50">
-
-      <svg
-        class="w-5 h-5 text-white"
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        viewBox="0 0 24 24">
-
-        <path
-          stroke="currentColor"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="m9 5 7 7-7 7"/>
-
-      </svg>
-
-      <span class="sr-only">
-        Siguiente
-      </span>
-
-    </span>
-
-  </button>
-
+        <button
+          type="button"
+          (click)="previousSlide()"
+          aria-label="Producto anterior"
+          class="absolute left-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/20 text-xl text-white hover:bg-black/40">
+          ‹
+        </button>
+        <button
+          type="button"
+          (click)="nextSlide()"
+          aria-label="Siguiente producto"
+          class="absolute right-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/20 text-xl text-white hover:bg-black/40">
+          ›
+        </button>
+      }
+    </div>
+  }
 </section>

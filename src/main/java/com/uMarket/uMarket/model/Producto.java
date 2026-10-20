@@ -32,8 +32,13 @@ public class Producto {
 	@Column(nullable = false, precision = 10, scale = 2)
 	private BigDecimal precio;
 
+	@Column(length = 80)
+	private String categoria;
+
+	// Estado DERIVADO de la moderación (lo calcula ProductoService.derivarEstado):
+	// PENDIENTE y RECHAZADO NO son visibles en el catálogo; ACTIVO/PAUSADO/VENDIDO sí.
 	@Column(nullable = false, length = 30)
-	private String estado = "DISPONIBLE";
+	private String estado = "PENDIENTE";
 
 	@Column(name = "created_at")
 	private LocalDateTime createdAt;
