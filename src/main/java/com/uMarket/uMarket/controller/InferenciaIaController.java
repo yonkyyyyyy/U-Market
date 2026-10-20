@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -109,7 +110,7 @@ public class InferenciaIaController {
             return error(HttpStatus.BAD_REQUEST, "El archivo de imagen está vacío o no se envió");
         }
         if (archivo.getSize() > imagenMaxBytes) {
-            return error(HttpStatus.PAYLOAD_TOO_LARGE,
+            return error(HttpStatusCode.valueOf(413),
                     "La imagen supera el máximo permitido de " + imagenMaxBytes + " bytes");
         }
         String tipoMime = archivo.getContentType() == null
@@ -141,7 +142,7 @@ public class InferenciaIaController {
     }
 
     /** Mismo formato de error que {@code GlobalExceptionHandler}, para el llamador. */
-    private ResponseEntity<Map<String, Object>> error(HttpStatus status, String mensaje) {
+    private ResponseEntity<Map<String, Object>> error(HttpStatusCode status, String mensaje) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", LocalDateTime.now());
         body.put("status", status.value());

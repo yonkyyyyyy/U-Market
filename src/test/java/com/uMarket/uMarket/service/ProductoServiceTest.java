@@ -36,6 +36,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -430,11 +431,11 @@ class ProductoServiceTest {
 		when(storageService.leer("uuid-123.jpg")).thenReturn(File.createTempFile("staging_test", ".jpg"));
 		when(visionAnalisisService.analizar(any()))
 				.thenReturn(moderacion(ModerationStatus.APPROVED));
-		when(cloudinaryService.uploadFile(any())).thenReturn(Map.of(
+		doReturn(Map.of(
 				"secure_url", "https://res.cloudinary.com/umarket/cuaderno.jpg",
 				"public_id", "umarket/cuaderno",
 				"format", "jpg",
-				"bytes", "1234"));
+				"bytes", "1234")).when(cloudinaryService).uploadFile(any());
 		when(archivoMultimediaRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 		when(imagenEnRevisionRepository.findByProductoId(1L)).thenReturn(List.of(imagen));
 		when(productoRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(producto));

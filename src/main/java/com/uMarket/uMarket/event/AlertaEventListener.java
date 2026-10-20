@@ -10,7 +10,6 @@ import com.uMarket.uMarket.model.Usuario;
 import com.uMarket.uMarket.repository.AlertaRepository;
 import com.uMarket.uMarket.repository.UsuarioRepository;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -27,11 +26,15 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Component
 @Slf4j
-@RequiredArgsConstructor
 public class AlertaEventListener {
 
 	private final AlertaRepository alertaRepository;
 	private final UsuarioRepository usuarioRepository;
+
+	public AlertaEventListener(AlertaRepository alertaRepository, UsuarioRepository usuarioRepository) {
+		this.alertaRepository = alertaRepository;
+		this.usuarioRepository = usuarioRepository;
+	}
 
     @Async("alertaExecutor")
 	@EventListener(condition = "#event.tipoAlerta.name() == 'EXPIRACION'")

@@ -287,7 +287,7 @@ public class ProductoService {
 			// RabbitMQ aún tiene la imagen para volver a intentarlo).
 			File copia = File.createTempFile("upload_", extension(archivo.getName()));
 			Files.copy(archivo.toPath(), copia.toPath(), StandardCopyOption.REPLACE_EXISTING);
-			Map subida = cloudinaryService.uploadFile(copia);
+			Map<?, ?> subida = cloudinaryService.uploadFile(copia);
 
 			ArchivoMultimedia multimedia = new ArchivoMultimedia();
 			multimedia.setProducto(imagen.getProducto());
