@@ -15,7 +15,7 @@ export class Navbar {
   protected readonly isAdmin = computed(() => this.authService.isAdmin());
 
   protected toggleMenu(): void {
-    this.isMenuOpen.update((isOpen: boolean) => !isOpen);git
+    this.isMenuOpen.update((isOpen: boolean) => !isOpen);
   }
 
   protected closeMenu(): void {
