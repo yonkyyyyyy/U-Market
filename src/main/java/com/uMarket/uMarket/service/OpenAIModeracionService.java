@@ -4,6 +4,7 @@ import com.uMarket.uMarket.dto.ModerationResultDTO;
 import com.uMarket.uMarket.dto.OpenAIModeracionResponse;
 import com.uMarket.uMarket.enums.ModerationStatus;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -56,6 +57,7 @@ public class OpenAIModeracionService {
 		this(openaiRestClient, model, umbral, "");
 	}
 
+	@Autowired
 	public OpenAIModeracionService(RestClient openaiRestClient,
 									@Value("${openai.model:omni-moderation-latest}") String model,
 									@Value("${openai.umbral:0.5}") double umbral,
