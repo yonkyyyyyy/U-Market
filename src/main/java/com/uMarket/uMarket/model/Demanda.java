@@ -41,6 +41,9 @@ public class Demanda {
 	@Column(name = "fecha_creacion", nullable = false, updatable = false)
 	private LocalDateTime fechaCreacion;
 
+	@Version
+	private Long version;
+
 	@PrePersist
 	protected void onCreate() {
 		if (estado == null) {

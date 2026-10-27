@@ -43,6 +43,9 @@ public class Producto {
 	@Column(name = "created_at")
 	private LocalDateTime createdAt;
 
+	@Version
+	private Long version;
+
 	@OneToMany(mappedBy = "producto", cascade = CascadeType.ALL, orphanRemoval = true)
 	private java.util.List<ArchivoMultimedia> archivosMultimedia = new java.util.ArrayList<>();
 
