@@ -47,6 +47,16 @@ public class GlobalExceptionHandler {
 		return build(HttpStatus.BAD_REQUEST, message);
 	}
 
+	@ExceptionHandler(ContenidoInapropiadoException.class)
+	public ResponseEntity<Map<String, Object>> handleContenidoInapropiado(ContenidoInapropiadoException ex) {
+		Map<String, Object> body = new LinkedHashMap<>();
+		body.put("timestamp", LocalDateTime.now());
+		body.put("status", 422);
+		body.put("message", ex.getMessage());
+		body.put("categorias", ex.getResultado().getCategoriasDetectadas());
+		return ResponseEntity.status(422).body(body);
+	}
+
 	@ExceptionHandler(ObjectOptimisticLockingFailureException.class)
 	public ResponseEntity<Map<String, Object>> handleOptimisticLocking(ObjectOptimisticLockingFailureException ex) {
 		return build(HttpStatus.CONFLICT,

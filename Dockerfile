@@ -28,6 +28,7 @@ WORKDIR /app
 
 # Add a non-root user for security
 RUN addgroup -S spring && adduser -S spring -G spring
+RUN mkdir -p /app/uploads/staging && chown -R spring:spring /app/uploads
 USER spring:spring
 
 # Copy the built jar from the builder stage

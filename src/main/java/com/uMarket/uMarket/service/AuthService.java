@@ -49,9 +49,7 @@ public class AuthService {
 		usuario.setNombre(request.nombre().trim());
 		usuario.setCorreoInstitucional(correo);
 		usuario.setPasswordHash(passwordEncoder.encode(request.password()));
-		usuario.setRol(request.rol() == null || request.rol().isBlank()
-				? "ESTUDIANTE"
-				: request.rol().trim().toUpperCase(Locale.ROOT));
+		usuario.setRol("ESTUDIANTE");
 		usuario.setCreatedAt(LocalDateTime.now());
 		usuarioRepository.save(usuario);
 

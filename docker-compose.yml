@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   postgres-db:
     image: postgres:16-alpine
@@ -11,6 +13,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
 
   pgadmin:
     image: dpage/pgadmin4
@@ -22,20 +25,68 @@ services:
       - "5050:80"
     restart: always
 
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: umarket_rabbitmq
+    ports:
+      - "5672:5672"   # AMQP: lo usa el backend
+      - "15672:15672" # Panel de gestión: http://localhost:15672
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-umarket}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Define RABBITMQ_PASSWORD en .env}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    restart: unless-stopped
+
   backend-app:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: umarket_backend
-    ports:
-      - "8080:8080"
+    expose:
+      - "8080" # Expuesto internamente para que Nginx lo consulte de forma segura
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/U-Market
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: 15262005
+      UPLOADS_STAGING_PATH: /tmp/uploads/staging   # Ruta modificada para permisos en Docker
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-umarket}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?Define RABBITMQ_PASSWORD en .env}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:?Define CLOUDINARY_CLOUD_NAME en .env}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:?Define CLOUDINARY_API_KEY en .env}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:?Define CLOUDINARY_API_SECRET en .env}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?Define OPENAI_API_KEY en .env}
+      IA_INTERNAL_API_KEY: ${IA_INTERNAL_API_KEY:?Define IA_INTERNAL_API_KEY en .env}
     depends_on:
       - postgres-db
+      - rabbitmq
+    restart: unless-stopped
+
+  frontend-app:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: umarket_frontend
+    expose:
+      - "80" # Expuesto internamente para Nginx
+    depends_on:
+      - backend-app
+    restart: unless-stopped
+
+  umarket_nginx:
+    image: nginx:alpine
+    container_name: umarket_nginx
+    ports:
+      - "80:80" # Única puerta de acceso pública al sistema
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - frontend-app
+      - backend-app
     restart: unless-stopped
 
 volumes:
   pgdata:
+  rabbitmq_data:

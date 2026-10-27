@@ -77,17 +77,18 @@ class ProductoControllerTest {
 
 	@Test
 	void listarProductosFiltraPorEstado() throws Exception {
-		when(productoService.listarTodos("DISPONIBLE")).thenReturn(List.of(productoDto()));
+		when(productoService.listarTodos("ACTIVO")).thenReturn(List.of(productoDto()));
 
-		mockMvc.perform(get("/api/productos").param("estado", "DISPONIBLE"))
+		mockMvc.perform(get("/api/productos").param("estado", "ACTIVO"))
 				.andExpect(status().isOk());
 
-		verify(productoService).listarTodos("DISPONIBLE");
+		verify(productoService).listarTodos("ACTIVO");
 	}
 
 	@Test
 	void obtenerProductoExistente() throws Exception {
-		when(productoService.obtener(1L)).thenReturn(productoDto());
+		autenticar();
+		when(productoService.obtener(1L, principal.getUsuario())).thenReturn(productoDto());
 
 		mockMvc.perform(get("/api/productos/1"))
 				.andExpect(status().isOk())
@@ -96,7 +97,9 @@ class ProductoControllerTest {
 
 	@Test
 	void obtenerProductoInexistenteDa404() throws Exception {
-		when(productoService.obtener(99L)).thenThrow(new ResourceNotFoundException("Producto no encontrado con id: 99"));
+		autenticar();
+		when(productoService.obtener(99L, principal.getUsuario()))
+				.thenThrow(new ResourceNotFoundException("Producto no encontrado con id: 99"));
 
 		mockMvc.perform(get("/api/productos/99"))
 				.andExpect(status().isNotFound())
@@ -145,9 +148,20 @@ class ProductoControllerTest {
 		verify(productoService).eliminar(1L, principal.getUsuario());
 	}
 
+	@Test
+	void publicarProductoDevuelve202() throws Exception {
+		autenticar();
+
+		mockMvc.perform(post("/api/productos/1/publicar"))
+				.andExpect(status().isAccepted())
+				.andExpect(jsonPath("$.estado").value("PENDIENTE"));
+
+		verify(productoService).publicar(1L, principal.getUsuario());
+	}
+
 	private ProductoDto productoDto() {
 		return new ProductoDto(1L, "Calculadora Casio", "fx-991LA CW", new BigDecimal("89.50"), null,
-				"DISPONIBLE", null, 1L, "Ana Torres");
+				"ACTIVO", null, 1L, "Ana Torres");
 	}
 
 	private Usuario usuario() {

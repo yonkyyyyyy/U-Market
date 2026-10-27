@@ -2,15 +2,19 @@
 
     <app-navbar></app-navbar>
 
-    <main class="pt-24 pb-10">
+    <main id="inicio" class="pt-24 pb-10">
 
         <div class="max-w-5xl mx-auto px-4">
 
-            <app-product-carousel></app-product-carousel>
+            <section id="publicaciones" class="scroll-mt-24">
+                <app-product-carousel></app-product-carousel>
+            </section>
 
-            <div class="mt-8">
+            <div id="crear-publicacion" class="mt-8 scroll-mt-24">
                 <app-create-post></app-create-post>
             </div>
+
+            <app-demand-wall></app-demand-wall>
 
         </div>
 
