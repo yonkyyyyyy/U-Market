@@ -47,6 +47,12 @@ cloudinary:
   api-key: ${CLOUDINARY_API_KEY:your_api_key}
   api-secret: ${CLOUDINARY_API_SECRET:your_api_secret}
 
+matching:
+  # Umbral mínimo de score (0..1) para incluir un producto sugerido.
+  umbral: ${MATCHING_UMBRAL:0.25}
+  # Máximo de candidatos a traer de BD antes del scoring en memoria.
+  candidatos-max: ${MATCHING_CANDIDATOS_MAX:100}
+
 openai:
   # API key externa: NUNCA commiteada. Se configura con: setx OPENAI_API_KEY "sk-..."
   api-key: ${OPENAI_API_KEY:}
@@ -55,6 +61,11 @@ openai:
   # Umbral de score por categoría (0..1) para considerar el contenido inapropiado.
   # Se calibra con el set de evaluación (parte del "afinamiento").
   umbral: 0.5
+  # Capa dura (blacklist) de términos que se rechazan SIEMPRE, aunque OpenAI no
+  # los marque. Lista separada por comas. Si está vacía, se usa la lista por
+  # defecto del servicio (armas, drogas, insultos comunes). Para desactivarla,
+  # poner un valor que no coincida (p. ej. "_ninguna_").
+  blacklist: ${OPENAI_BLACKLIST:}
   # Visión artificial: análisis de imágenes de productos (sustancias prohibidas).
   # Modelo multimodal de OpenAI. El umbral se calibra con el set de imágenes de evaluación.
   vision-model: gpt-4o-mini
