@@ -55,6 +55,11 @@ openai:
   # Umbral de score por categoría (0..1) para considerar el contenido inapropiado.
   # Se calibra con el set de evaluación (parte del "afinamiento").
   umbral: 0.5
+  # Capa dura (blacklist) de términos que se rechazan SIEMPRE, aunque OpenAI no
+  # los marque. Lista separada por comas. Si está vacía, se usa la lista por
+  # defecto del servicio (armas, drogas, insultos comunes). Para desactivarla,
+  # poner un valor que no coincida (p. ej. "_ninguna_").
+  blacklist: ${OPENAI_BLACKLIST:}
   # Visión artificial: análisis de imágenes de productos (sustancias prohibidas).
   # Modelo multimodal de OpenAI. El umbral se calibra con el set de imágenes de evaluación.
   vision-model: gpt-4o-mini
