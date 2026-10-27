@@ -51,6 +51,19 @@ public class DemandaServiceImpl implements DemandaService {
 				.map(DemandaResponseDTO::from);
 	}
 
+	/**
+	 * Actualización con Bloqueo Optimista transparente.
+	 * <p>
+	 * Flujo ACID: dentro de la transacción se carga la entidad gestionada
+	 * (con su campo {@code @Version}), se mutan los campos y se invoca
+	 * {@code save()}. En el flush/commit Hibernate ejecuta:
+	 * {@code UPDATE demandas SET ..., version = version + 1 WHERE id = ? AND version = ?}.
+	 * Si otro usuario modificó el registro entre la lectura y la escritura,
+	 * la condición del WHERE falla (0 filas afectadas) y JPA lanza
+	 * {@code ObjectOptimisticLockingFailureException} → HTTP 409 Conflict
+	 * gestionado en {@code GlobalExceptionHandler}. No se requiere código
+	 * adicional: el control de concurrencia es transparente.
+	 */
 	@Override
 	@Transactional
 	public DemandaResponseDTO actualizar(Long id, DemandaRequestDTO request) {
@@ -61,6 +74,7 @@ public class DemandaServiceImpl implements DemandaService {
 		demanda.setDescripcion(request.descripcion());
 		demanda.setPresupuestoEstimado(request.presupuestoEstimado());
 		demanda.setCategoria(normalizarCategoria(request.categoria()));
+		// save() dispara el chequeo optimista: compara e incrementa version automáticamente
 		return DemandaResponseDTO.from(demandaRepository.save(demanda));
 	}
 
