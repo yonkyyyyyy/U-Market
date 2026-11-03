@@ -1,7 +1,10 @@
 package com.uMarket.uMarket.exception;
 
+import jakarta.persistence.OptimisticLockException;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -52,6 +55,18 @@ public class GlobalExceptionHandler {
 		body.put("message", ex.getMessage());
 		body.put("categorias", ex.getResultado().getCategoriasDetectadas());
 		return ResponseEntity.status(422).body(body);
+	}
+
+	@ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+	public ResponseEntity<Map<String, Object>> handleOptimisticLocking(ObjectOptimisticLockingFailureException ex) {
+		return build(HttpStatus.CONFLICT,
+				"El registro fue modificado por otro usuario y debe recargar la página");
+	}
+
+	@ExceptionHandler(OptimisticLockException.class)
+	public ResponseEntity<Map<String, Object>> handleOptimisticLockException(OptimisticLockException ex) {
+		return build(HttpStatus.CONFLICT,
+				"El registro fue modificado por otro usuario y debe recargar la página");
 	}
 
 	private ResponseEntity<Map<String, Object>> build(HttpStatus status, String message) {
