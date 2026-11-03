@@ -59,4 +59,20 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
 	@Query("update Producto p set p.estado = 'ACTIVO' where p.estado = 'DISPONIBLE'")
 	int normalizarEstadoLegacy();
 
+	/**
+	 * Descuento atómico de stock. La validación {@code p.stock >= :cantidad} va en el WHERE,
+	 * así que la BD decide en una sola sentencia y no hay ventana entre leer y escribir.
+	 * {@code version = version + 1} mantiene coherente el bloqueo optimista de {@code @Version}.
+	 *
+	 * @return 1 si se descontó; 0 si no había stock suficiente (o el producto no existe)
+	 */
+	@Modifying(clearAutomatically = true, flushAutomatically = true)
+	@Query("""
+			UPDATE Producto p
+			SET p.stock = p.stock - :cantidad,
+			    p.version = p.version + 1
+			WHERE p.id = :id AND p.stock >= :cantidad
+			""")
+	int descontarStock(@Param("id") Long id, @Param("cantidad") int cantidad);
+
 }

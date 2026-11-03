@@ -35,6 +35,10 @@ public class Producto {
 	@Column(length = 80)
 	private String categoria;
 
+	// Unidades disponibles. Se descuenta con UPDATE condicional (ver ProductoRepository.descontarStock).
+	@Column(nullable = false, columnDefinition = "INTEGER NOT NULL DEFAULT 1")
+	private Integer stock = 1;
+
 	// Estado DERIVADO de la moderación (lo calcula ProductoService.derivarEstado):
 	// PENDIENTE y RECHAZADO NO son visibles en el catálogo; ACTIVO/PAUSADO/VENDIDO sí.
 	@Column(nullable = false, length = 30)

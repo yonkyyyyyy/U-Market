@@ -8,6 +8,7 @@ import com.uMarket.uMarket.enums.EstadoModeracion;
 import com.uMarket.uMarket.enums.ModerationStatus;
 import com.uMarket.uMarket.exception.ContenidoInapropiadoException;
 import com.uMarket.uMarket.exception.ResourceNotFoundException;
+import com.uMarket.uMarket.exception.StockInsuficienteException;
 import com.uMarket.uMarket.model.ArchivoMultimedia;
 import com.uMarket.uMarket.model.ImagenEnRevision;
 import com.uMarket.uMarket.model.Producto;
@@ -432,6 +433,36 @@ public class ProductoService {
 			case FAILED, PENDING -> "La IA de texto no estuvo disponible (fail-open: se publicó igual)";
 			case APPROVED -> null;
 		};
+	}
+
+	/**
+	 * Descuenta {@code cantidad} unidades en una transacción. Si el UPDATE condicional
+	 * no afecta filas, otra compra ganó el stock: se lanza StockInsuficienteException y
+	 * la transacción hace rollback. Si el producto no existe, se informa como 404.
+	 */
+	@Transactional
+	public Producto comprar(Long productoId, int cantidad, Usuario comprador) {
+		if (cantidad <= 0) {
+			throw new IllegalArgumentException("La cantidad debe ser mayor que cero");
+		}
+		Producto producto = productoRepository.findById(productoId)
+				.orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado: " + productoId));
+		if (producto.getUsuario().getId().equals(comprador.getId())) {
+			throw new IllegalArgumentException("No puedes comprar tu propio producto");
+		}
+		if (!ESTADO_ACTIVO.equals(producto.getEstado())) {
+			throw new IllegalArgumentException("El producto no está disponible para la compra");
+		}
+		if (productoRepository.descontarStock(productoId, cantidad) == 0) {
+			throw new StockInsuficienteException(productoId);
+		}
+		// El UPDATE masivo limpió el contexto de persistencia: releemos el stock real.
+		producto = productoRepository.findById(productoId)
+				.orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado: " + productoId));
+		if (producto.getStock() == 0) {
+			producto.setEstado("VENDIDO");
+		}
+		return producto;
 	}
 
 	private String motivoImagen(ModerationStatus status) {

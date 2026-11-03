@@ -8,6 +8,7 @@ import com.uMarket.uMarket.enums.EstadoModeracion;
 import com.uMarket.uMarket.enums.ModerationStatus;
 import com.uMarket.uMarket.exception.ContenidoInapropiadoException;
 import com.uMarket.uMarket.exception.ResourceNotFoundException;
+import com.uMarket.uMarket.exception.StockInsuficienteException;
 import com.uMarket.uMarket.model.ImagenEnRevision;
 import com.uMarket.uMarket.model.Producto;
 import com.uMarket.uMarket.model.Usuario;
@@ -32,6 +33,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -543,6 +545,69 @@ class ProductoServiceTest {
 
 		// La imagen es opcional: sin imágenes no hay nada que moderar → visible.
 		assertThat(producto.getEstado()).isEqualTo("ACTIVO");
+	}
+
+	@Test
+	void comprarDescuentaStockYMarcaVendidoAlAgotar() {
+		Producto producto = producto(1L, usuario(1L, "ana@utp.edu.pe"));
+		Usuario comprador = usuario(2L, "luis@utp.edu.pe");
+		when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
+		when(productoRepository.descontarStock(1L, 1)).thenAnswer(inv -> {
+			producto.setStock(0);
+			return 1;
+		});
+
+		Producto resultado = productoService.comprar(1L, 1, comprador);
+
+		assertThat(resultado.getStock()).isZero();
+		assertThat(resultado.getEstado()).isEqualTo("VENDIDO");
+	}
+
+	@Test
+	void comprarLanzaStockInsuficienteCuandoNoHayFilasAfectadas() {
+		Producto producto = producto(1L, usuario(1L, "ana@utp.edu.pe"));
+		when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
+		when(productoRepository.descontarStock(1L, 1)).thenReturn(0);
+
+		assertThatThrownBy(() -> productoService.comprar(1L, 1, usuario(2L, "luis@utp.edu.pe")))
+				.isInstanceOf(StockInsuficienteException.class);
+		assertThat(producto.getEstado()).isEqualTo("ACTIVO");
+	}
+
+	@Test
+	void comprarRechazaCantidadNoPositiva() {
+		assertThatThrownBy(() -> productoService.comprar(1L, 0, usuario(2L, "luis@utp.edu.pe")))
+				.isInstanceOf(IllegalArgumentException.class);
+		verify(productoRepository, never()).descontarStock(anyLong(), anyInt());
+	}
+
+	@Test
+	void comprarRechazaProductoPropio() {
+		Usuario dueno = usuario(1L, "ana@utp.edu.pe");
+		when(productoRepository.findById(1L)).thenReturn(Optional.of(producto(1L, dueno)));
+
+		assertThatThrownBy(() -> productoService.comprar(1L, 1, dueno))
+				.isInstanceOf(IllegalArgumentException.class);
+		verify(productoRepository, never()).descontarStock(anyLong(), anyInt());
+	}
+
+	@Test
+	void comprarProductoInexistenteLanzaNotFound() {
+		when(productoRepository.findById(9L)).thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> productoService.comprar(9L, 1, usuario(2L, "luis@utp.edu.pe")))
+				.isInstanceOf(ResourceNotFoundException.class);
+	}
+
+	@Test
+	void comprarRechazaProductoNoActivo() {
+		Producto producto = producto(1L, usuario(1L, "ana@utp.edu.pe"));
+		producto.setEstado("PAUSADO");
+		when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
+
+		assertThatThrownBy(() -> productoService.comprar(1L, 1, usuario(2L, "luis@utp.edu.pe")))
+				.isInstanceOf(IllegalArgumentException.class);
+		verify(productoRepository, never()).descontarStock(anyLong(), anyInt());
 	}
 
 	private Usuario usuario(Long id, String correo) {

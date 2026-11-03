@@ -2,6 +2,7 @@ package com.uMarket.uMarket.exception;
 
 import jakarta.persistence.OptimisticLockException;
 
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -67,6 +68,18 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<Map<String, Object>> handleOptimisticLockException(OptimisticLockException ex) {
 		return build(HttpStatus.CONFLICT,
 				"El registro fue modificado por otro usuario y debe recargar la página");
+	}
+
+	@ExceptionHandler(StockInsuficienteException.class)
+	public ResponseEntity<Map<String, Object>> handleStockInsuficiente(StockInsuficienteException ex) {
+		return build(HttpStatus.CONFLICT,
+				"No hay stock suficiente para procesar su compra. El producto se agotó hace unos instantes.");
+	}
+
+	@ExceptionHandler(PessimisticLockingFailureException.class)
+	public ResponseEntity<Map<String, Object>> handlePessimisticLocking(PessimisticLockingFailureException ex) {
+		return build(HttpStatus.CONFLICT,
+				"El producto está siendo procesado por otra operación. Intente nuevamente.");
 	}
 
 	private ResponseEntity<Map<String, Object>> build(HttpStatus status, String message) {

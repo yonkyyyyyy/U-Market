@@ -2,6 +2,7 @@ package com.uMarket.uMarket.controller;
 
 import com.uMarket.uMarket.dto.ProductoDto;
 import com.uMarket.uMarket.dto.ProductoRequest;
+import com.uMarket.uMarket.model.Producto;
 import com.uMarket.uMarket.security.UsuarioPrincipal;
 import com.uMarket.uMarket.service.ProductoService;
 import jakarta.validation.Valid;
@@ -104,4 +105,18 @@ public class ProductoController {
 		response.put("estado", "PENDIENTE");
 		return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
 	}
-}
+
+	/**
+	 * Compra: descuenta {@code cantidad} unidades de forma atomica. 409 si el stock se agoto.
+	 */
+	@PostMapping("/{id}/comprar")
+	public Map<String, Object> comprar(@PathVariable Long id,
+									   @RequestParam(defaultValue = "1") int cantidad,
+									   @AuthenticationPrincipal UsuarioPrincipal principal) {
+		Producto producto = productoService.comprar(id, cantidad, principal.getUsuario());
+		Map<String, Object> response = new HashMap<>();
+		response.put("mensaje", "Compra realizada");
+		response.put("stockRestante", producto.getStock());
+		response.put("estado", producto.getEstado());
+		return response;
+	}}
