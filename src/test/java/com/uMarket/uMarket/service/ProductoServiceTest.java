@@ -3,6 +3,7 @@ package com.uMarket.uMarket.service;
 import com.uMarket.uMarket.dto.ModerationResultDTO;
 import com.uMarket.uMarket.dto.ProductoDto;
 import com.uMarket.uMarket.dto.ProductoRequest;
+import com.uMarket.uMarket.dto.StockUpdateEventDTO;
 import com.uMarket.uMarket.dto.TareaPesada;
 import com.uMarket.uMarket.enums.EstadoModeracion;
 import com.uMarket.uMarket.enums.ModerationStatus;
@@ -67,6 +68,8 @@ class ProductoServiceTest {
 	private TareaPesadaProducer tareaPesadaProducer;
 	@Mock
 	private RegistroModeracionService registroModeracionService;
+	@Mock
+	private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
 	private ProductoService productoService;
 
@@ -82,7 +85,8 @@ class ProductoServiceTest {
 				visionAnalisisService,
 				storageService,
 				tareaPesadaProducer,
-				registroModeracionService
+				registroModeracionService,
+				eventPublisher
 		);
 	}
 
@@ -561,6 +565,35 @@ class ProductoServiceTest {
 
 		assertThat(resultado.getStock()).isZero();
 		assertThat(resultado.getEstado()).isEqualTo("VENDIDO");
+	}
+
+	@Test
+	void comprarPublicaEventoDeStockConfirmado() {
+		Producto producto = producto(1L, usuario(1L, "ana@utp.edu.pe"));
+		when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
+		when(productoRepository.descontarStock(1L, 1)).thenAnswer(inv -> {
+			producto.setStock(2);
+			return 1;
+		});
+
+		productoService.comprar(1L, 1, usuario(2L, "luis@utp.edu.pe"));
+
+		ArgumentCaptor<StockUpdateEventDTO> captor = ArgumentCaptor.forClass(StockUpdateEventDTO.class);
+		verify(eventPublisher).publishEvent(captor.capture());
+		assertThat(captor.getValue().productoId()).isEqualTo(1L);
+		assertThat(captor.getValue().nuevoStock()).isEqualTo(2);
+	}
+
+	@Test
+	void comprarNoPublicaEventoSiNoHayStock() {
+		Producto producto = producto(1L, usuario(1L, "ana@utp.edu.pe"));
+		when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
+		when(productoRepository.descontarStock(1L, 1)).thenReturn(0);
+
+		assertThatThrownBy(() -> productoService.comprar(1L, 1, usuario(2L, "luis@utp.edu.pe")))
+				.isInstanceOf(StockInsuficienteException.class);
+
+		verify(eventPublisher, never()).publishEvent(any());
 	}
 
 	@Test
