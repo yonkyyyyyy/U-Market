@@ -585,6 +585,18 @@ class ProductoServiceTest {
 	}
 
 	@Test
+	void comprarNoPublicaEventoSiNoHayStock() {
+		Producto producto = producto(1L, usuario(1L, "ana@utp.edu.pe"));
+		when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
+		when(productoRepository.descontarStock(1L, 1)).thenReturn(0);
+
+		assertThatThrownBy(() -> productoService.comprar(1L, 1, usuario(2L, "luis@utp.edu.pe")))
+				.isInstanceOf(StockInsuficienteException.class);
+
+		verify(eventPublisher, never()).publishEvent(any());
+	}
+
+	@Test
 	void comprarLanzaStockInsuficienteCuandoNoHayFilasAfectadas() {
 		Producto producto = producto(1L, usuario(1L, "ana@utp.edu.pe"));
 		when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
