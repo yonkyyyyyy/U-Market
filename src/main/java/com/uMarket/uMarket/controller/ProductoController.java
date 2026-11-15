@@ -1,9 +1,11 @@
 package com.uMarket.uMarket.controller;
 
+import com.uMarket.uMarket.dto.DemandaResponseDTO;
 import com.uMarket.uMarket.dto.ProductoDto;
 import com.uMarket.uMarket.dto.ProductoRequest;
 import com.uMarket.uMarket.model.Producto;
 import com.uMarket.uMarket.security.UsuarioPrincipal;
+import com.uMarket.uMarket.service.EmparejamientoService;
 import com.uMarket.uMarket.service.ProductoService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -30,9 +32,11 @@ import java.util.Map;
 public class ProductoController {
 
 	private final ProductoService productoService;
+	private final EmparejamientoService emparejamientoService;
 
-	public ProductoController(ProductoService productoService) {
+	public ProductoController(ProductoService productoService, EmparejamientoService emparejamientoService) {
 		this.productoService = productoService;
+		this.emparejamientoService = emparejamientoService;
 	}
 
 	@GetMapping
@@ -49,6 +53,16 @@ public class ProductoController {
 	public ProductoDto obtener(@PathVariable Long id,
 							   @AuthenticationPrincipal UsuarioPrincipal principal) {
 		return productoService.obtener(id, principal.getUsuario());
+	}
+
+	/**
+	 * Demanda inversa: demandas activas compatibles con esta publicación.
+	 * Solo puede consultarlas el dueño del producto.
+	 */
+	@GetMapping("/{id}/demandas-compatibles")
+	public List<DemandaResponseDTO> demandasCompatibles(@PathVariable Long id,
+														@AuthenticationPrincipal UsuarioPrincipal principal) {
+		return emparejamientoService.buscarDemandasCompatiblesParaProducto(id, principal.getUsuario());
 	}
 
 	@PostMapping

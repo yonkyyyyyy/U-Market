@@ -23,6 +23,7 @@ describe('DemandRequestForm', () => {
     component.presupuesto = 45.5;
     component.categoria = 'Tecnología';
     component.campus = 'Lima Este';
+    component.tags = 'Cálculo, Casio, calculo';
     component.vigencia = 3;
 
     component.submit();
@@ -32,7 +33,9 @@ describe('DemandRequestForm', () => {
         titulo: 'Calculadora científica',
         descripcion: 'Modelo Casio',
         presupuestoEstimado: 45.5,
-        categoria: 'TECNOLOGÍA'
+        categoria: 'TECNOLOGÍA',
+        campus: 'Lima Este',
+        tags: ['calculo', 'casio']
       },
       category: 'Tecnología',
       campus: 'Lima Este',

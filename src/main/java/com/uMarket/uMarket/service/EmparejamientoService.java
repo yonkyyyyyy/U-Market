@@ -1,25 +1,31 @@
 package com.uMarket.uMarket.service;
 
+import com.uMarket.uMarket.dto.DemandaResponseDTO;
 import com.uMarket.uMarket.dto.ProductoDto;
 import com.uMarket.uMarket.event.AlertaInternaEvent;
+import com.uMarket.uMarket.event.ProductoActivadoEvent;
 import com.uMarket.uMarket.event.TipoAlerta;
 import com.uMarket.uMarket.exception.ResourceNotFoundException;
 import com.uMarket.uMarket.model.Demanda;
 import com.uMarket.uMarket.model.Producto;
+import com.uMarket.uMarket.model.Usuario;
 import com.uMarket.uMarket.repository.DemandaRepository;
 import com.uMarket.uMarket.repository.ProductoRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.math.BigDecimal;
 import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -32,6 +38,9 @@ public class EmparejamientoService {
 
 	private static final int LIMITE_SUGERENCIAS = 10;
 
+	private static final String ESTADO_PRODUCTO_ACTIVO = "ACTIVO";
+	private static final String ESTADO_DEMANDA_ACTIVA = "ACTIVA";
+
 	private static final Set<String> STOPWORDS = Set.of(
 			"busco", "busca", "buscan", "necesito", "quiero", "compro",
 			"de", "la", "el", "en", "y", "a", "los", "las", "del", "al",
@@ -40,20 +49,22 @@ public class EmparejamientoService {
 			"vende", "venta", "compra");
 
 	/** Peso de cada criterio en el score final (suman 1.0). */
-	private static final double PESO_CATEGORIA = 0.35;
-	private static final double PESO_TEXTO = 0.40;
+	private static final double PESO_CATEGORIA = 0.30;
+	private static final double PESO_TEXTO = 0.30;
+	private static final double PESO_TAGS = 0.10;
 	private static final double PESO_PRECIO = 0.15;
-	private static final double PESO_RECENCIA = 0.10;
+	private static final double PESO_CAMPUS = 0.10;
+	private static final double PESO_RECENCIA = 0.05;
 
 	private final DemandaRepository demandaRepository;
 	private final ProductoRepository productoRepository;
 	private final ApplicationEventPublisher eventPublisher;
 
 	@Value("${matching.umbral:0.25}")
-	private double umbral;
+	private double umbral = 0.25;
 
 	@Value("${matching.candidatos-max:100}")
-	private int candidatosMax;
+	private int candidatosMax = 100;
 
 	public EmparejamientoService(DemandaRepository demandaRepository,
 			ProductoRepository productoRepository,
@@ -65,8 +76,9 @@ public class EmparejamientoService {
 
 	/**
 	 * Sugiere productos ACTIVO de otros usuarios que mejor coincidan con la
-	 * demanda, ordenados por un score de relevancia (categoría, texto, precio,
-	 * recencia). Publica una alerta si hay sugerencias por encima del umbral.
+	 * demanda, ordenados por un score de relevancia (categoría, texto, etiquetas,
+	 * precio, campus y recencia). Publica una alerta si hay sugerencias por
+	 * encima del umbral.
 	 */
 	@Transactional(readOnly = true)
 	public List<ProductoDto> buscarProductosSugeridosParaDemanda(Long demandaId) {
@@ -74,22 +86,27 @@ public class EmparejamientoService {
 				.orElseThrow(() -> new ResourceNotFoundException("Demanda no encontrada con id: " + demandaId));
 
 		Set<String> tokensDemanda = tokens(demanda.getTitulo(), demanda.getDescripcion());
-		if (demanda.getCategoria() == null && tokensDemanda.isEmpty()) {
+		Set<String> tagsDemanda = tagsDe(demanda);
+		if (demanda.getCategoria() == null && tokensDemanda.isEmpty() && tagsDemanda.isEmpty()) {
 			return List.of();
 		}
 
 		String keyword = extraerPalabraClave(demanda.getTitulo(), demanda.getDescripcion());
+		if (keyword.isEmpty() && !tagsDemanda.isEmpty()) {
+			keyword = tagsDemanda.iterator().next();
+		}
 		Pageable limite = PageRequest.of(0, candidatosMax);
 		String texto = keyword.isEmpty() ? "8f3a2c9e1b7d4a6f0e2c5b8d" : keyword;
 
 		List<Producto> candidatos = productoRepository.buscarSugeridosParaDemanda(
 				demanda.getCategoria(),
 				texto,
+				demanda.getCampus(),
 				demanda.getUsuario().getId(),
 				limite);
 
 		List<ProductoDto> sugeridos = candidatos.stream()
-				.filter(p -> p.getEstado() != null && "ACTIVO".equalsIgnoreCase(p.getEstado()))
+				.filter(p -> p.getEstado() != null && ESTADO_PRODUCTO_ACTIVO.equalsIgnoreCase(p.getEstado()))
 				.map(p -> new Scored(p, calcularScore(demanda, p, tokensDemanda)))
 				.filter(s -> s.score >= umbral)
 				.sorted(Comparator.comparingDouble((Scored s) -> s.score).reversed()
@@ -108,6 +125,72 @@ public class EmparejamientoService {
 			));
 		}
 		return sugeridos;
+	}
+
+	/**
+	 * Demanda inversa: demandas ACTIVAS de otros usuarios compatibles con un
+	 * producto publicado. Solo el dueño de la publicación puede consultarlas.
+	 */
+	@Transactional(readOnly = true)
+	public List<DemandaResponseDTO> buscarDemandasCompatiblesParaProducto(Long productoId, Usuario solicitante) {
+		Producto producto = productoRepository.findById(productoId)
+				.orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado con id: " + productoId));
+
+		if (solicitante == null || !producto.getUsuario().getId().equals(solicitante.getId())) {
+			throw new AccessDeniedException("Solo el dueño de la publicación puede ver las demandas compatibles");
+		}
+
+		return demandasCompatibles(producto).stream()
+				.map(DemandaResponseDTO::from)
+				.toList();
+	}
+
+	/**
+	 * Se ejecuta cuando el pipeline activa una publicación. Busca demandas
+	 * activas compatibles y genera una alerta para cada autor.
+	 */
+	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
+	public void onProductoActivado(ProductoActivadoEvent event) {
+		notificarDemandasCompatibles(event.productoId());
+	}
+
+	/**
+	 * Notifica a los autores de las demandas compatibles. Pensado para la
+	 * demanda inversa: el vendedor publica y quienes buscaban ese producto
+	 * reciben la alerta.
+	 */
+	@Transactional(readOnly = true)
+	public void notificarDemandasCompatibles(Long productoId) {
+		Producto producto = productoRepository.findById(productoId).orElse(null);
+		if (producto == null || !ESTADO_PRODUCTO_ACTIVO.equalsIgnoreCase(producto.getEstado())) {
+			return;
+		}
+
+		for (Demanda demanda : demandasCompatibles(producto)) {
+			String campus = producto.getCampus() == null ? "" : " Campus: " + producto.getCampus() + ".";
+			eventPublisher.publishEvent(new AlertaInternaEvent(
+					demanda.getUsuario().getId(),
+					TipoAlerta.MATCH_ENCONTRADO,
+					"Hay una publicación que coincide con tu búsqueda",
+					"El producto '" + producto.getTitulo() + "' coincide con tu demanda '"
+							+ demanda.getTitulo() + "'." + campus
+			));
+		}
+	}
+
+	private List<Demanda> demandasCompatibles(Producto producto) {
+		return demandaRepository.findByEstado(ESTADO_DEMANDA_ACTIVA).stream()
+				.filter(demanda -> demanda.getUsuario() != null)
+				.filter(demanda -> !demanda.getUsuario().getId().equals(producto.getUsuario().getId()))
+				.map(demanda -> new ScoredDemanda(demanda, calcularScore(demanda, producto)))
+				.filter(scored -> scored.score >= umbral)
+				.sorted(Comparator.comparingDouble((ScoredDemanda s) -> s.score).reversed()
+						.thenComparing(s -> s.demanda.getFechaCreacion(),
+								Comparator.nullsLast(Comparator.reverseOrder())))
+				.limit(LIMITE_SUGERENCIAS)
+				.map(scored -> scored.demanda)
+				.toList();
 	}
 
 	/**
@@ -145,7 +228,18 @@ public class EmparejamientoService {
 			score += PESO_TEXTO * Math.min(1.0, textoScore);
 		}
 
-		// 3) Precio vs presupuesto
+		// 3) Etiquetas de la demanda presentes en el texto del producto.
+		Set<String> tagsDemanda = tagsDe(demanda);
+		if (!tagsDemanda.isEmpty()) {
+			String textoProducto = normalizar(
+					(producto.getTitulo() == null ? "" : producto.getTitulo()) + " "
+							+ (producto.getDescripcion() == null ? "" : producto.getDescripcion()) + " "
+							+ (producto.getCategoria() == null ? "" : producto.getCategoria()));
+			long encontradas = tagsDemanda.stream().filter(textoProducto::contains).count();
+			score += PESO_TAGS * ((double) encontradas / tagsDemanda.size());
+		}
+
+		// 4) Precio vs presupuesto
 		BigDecimal presupuesto = demanda.getPresupuestoEstimado();
 		BigDecimal precio = producto.getPrecio();
 		if (presupuesto != null && precio != null) {
@@ -162,7 +256,14 @@ public class EmparejamientoService {
 			score += PESO_PRECIO * 0.5;
 		}
 
-		// 4) Recencia
+		// 5) Campus (cruce espacial): mismo campus normalizado.
+		String campusDemanda = normalizarCampus(demanda.getCampus());
+		String campusProducto = normalizarCampus(producto.getCampus());
+		if (campusDemanda != null && campusDemanda.equals(campusProducto)) {
+			score += PESO_CAMPUS;
+		}
+
+		// 6) Recencia
 		LocalDateTime creado = producto.getCreatedAt();
 		if (creado != null) {
 			long dias = ChronoUnit.DAYS.between(creado, LocalDateTime.now());
@@ -186,6 +287,17 @@ public class EmparejamientoService {
 				.map(this::normalizar)
 				.filter(t -> t.length() >= 3 && !STOPWORDS.contains(t))
 				.collect(Collectors.toCollection(HashSet::new));
+	}
+
+	private Set<String> tagsDe(Demanda demanda) {
+		return demanda.getTags() == null ? Set.of() : demanda.getTags();
+	}
+
+	private String normalizarCampus(String campus) {
+		if (campus == null || campus.isBlank()) {
+			return null;
+		}
+		return normalizar(campus).trim();
 	}
 
 	private String normalizar(String token) {
@@ -217,6 +329,16 @@ public class EmparejamientoService {
 
 		Scored(Producto producto, double score) {
 			this.producto = producto;
+			this.score = score;
+		}
+	}
+
+	private static final class ScoredDemanda {
+		final Demanda demanda;
+		final double score;
+
+		ScoredDemanda(Demanda demanda, double score) {
+			this.demanda = demanda;
 			this.score = score;
 		}
 	}

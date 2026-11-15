@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ProductService } from '../../services/product.service';
+import { ProductRequest, ProductService } from '../../services/product.service';
 import { ToastService } from '../../services/toast.service';
 
 @Component({
@@ -14,9 +14,26 @@ export class CreatePost {
   private readonly productService = inject(ProductService);
   private readonly toastService = inject(ToastService);
 
+  readonly campuses = [
+    'Lima Centro',
+    'Lima Este',
+    'Lima Norte',
+    'Lima Sur',
+    'Ate',
+    'Callao',
+    'Arequipa',
+    'Chiclayo',
+    'Chimbote',
+    'Huancayo',
+    'Ica',
+    'Piura',
+    'Trujillo'
+  ];
+
   title = '';
   description = '';
   price: number | null = null;
+  campus = '';
   isPublishing = false;
   publishError = '';
 
@@ -32,15 +49,21 @@ export class CreatePost {
     this.isPublishing = true;
     this.publishError = '';
 
-    this.productService.create({
+    const payload: ProductRequest = {
       titulo: title,
       descripcion: this.description.trim(),
       precio: price
-    }).subscribe({
+    };
+    if (this.campus) {
+      payload.campus = this.campus;
+    }
+
+    this.productService.create(payload).subscribe({
       next: () => {
         this.title = '';
         this.description = '';
         this.price = null;
+        this.campus = '';
         this.isPublishing = false;
         this.toastService.success('Publicación creada', 'Tu producto ya aparece en el muro.');
       },

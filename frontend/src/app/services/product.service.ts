@@ -6,6 +6,7 @@ export interface ProductRequest {
   titulo: string;
   descripcion: string;
   precio: number;
+  campus?: string;
 }
 
 export interface Product {
@@ -13,6 +14,8 @@ export interface Product {
   titulo: string;
   descripcion: string | null;
   precio: number;
+  categoria?: string | null;
+  campus?: string | null;
   estado: string;
   createdAt: string | null;
   usuarioId: number;

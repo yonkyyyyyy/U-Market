@@ -15,6 +15,9 @@ public interface DemandaRepository extends JpaRepository<Demanda, Long> {
 
 	List<Demanda> findByEstadoAndFechaCreacionBefore(String estado, LocalDateTime fechaLimite);
 
+	/** Demandas activas, insumo de la demanda inversa (producto → demandas). */
+	List<Demanda> findByEstado(String estado);
+
 	Page<Demanda> findByEstado(String estado, Pageable pageable);
 
 	Page<Demanda> findByUsuario(Usuario usuario, Pageable pageable);

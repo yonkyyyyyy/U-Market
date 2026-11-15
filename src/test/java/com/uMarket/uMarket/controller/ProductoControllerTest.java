@@ -7,6 +7,7 @@ import com.uMarket.uMarket.model.Usuario;
 import com.uMarket.uMarket.security.UsuarioPrincipal;
 import com.uMarket.uMarket.security.JwtService;
 import com.uMarket.uMarket.service.CustomUserDetailsService;
+import com.uMarket.uMarket.service.EmparejamientoService;
 import com.uMarket.uMarket.service.ProductoService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -43,6 +44,9 @@ class ProductoControllerTest {
 
 	@MockitoBean
 	private ProductoService productoService;
+
+	@MockitoBean
+	private EmparejamientoService emparejamientoService;
 
 	@MockitoBean
 	private JwtService jwtService;
