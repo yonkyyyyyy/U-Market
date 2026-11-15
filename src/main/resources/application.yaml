@@ -75,3 +75,7 @@ openai:
   # Modelo multimodal de OpenAI. El umbral se calibra con el set de imágenes de evaluación.
   vision-model: gpt-4o-mini
   vision-umbral: 0.5
+  # Búsqueda en lenguaje natural: modelo de chat que extrae los filtros de la consulta.
+  # Si se desactiva o la API falla, se usa el parser heurístico local (fallback).
+  busqueda-habilitada: ${OPENAI_BUSQUEDA_HABILITADA:true}
+  busqueda-model: ${OPENAI_BUSQUEDA_MODEL:gpt-4o-mini}

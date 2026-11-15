@@ -20,6 +20,13 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
 	List<Producto> findByEstado(String estado);
 
 	/**
+	 * Candidatos para la búsqueda en lenguaje natural: publicaciones visibles
+	 * (ACTIVO), de la más reciente a la más antigua. El filtrado por relevancia
+	 * se hace en memoria en {@code BusquedaNlpService}.
+	 */
+	List<Producto> findByEstadoOrderByCreatedAtDesc(String estado, Pageable pageable);
+
+	/**
 	 * Carga el producto con lock pesimista ({@code SELECT ... FOR UPDATE}).
 	 * Lo usa la activación/rechazo del pipeline para que dos workers concurrentes
 	 * no se pisen al recalcular el estado (lost update).

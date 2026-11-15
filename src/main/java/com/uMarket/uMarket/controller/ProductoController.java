@@ -1,10 +1,12 @@
 package com.uMarket.uMarket.controller;
 
+import com.uMarket.uMarket.dto.BusquedaNlpResponse;
 import com.uMarket.uMarket.dto.DemandaResponseDTO;
 import com.uMarket.uMarket.dto.ProductoDto;
 import com.uMarket.uMarket.dto.ProductoRequest;
 import com.uMarket.uMarket.model.Producto;
 import com.uMarket.uMarket.security.UsuarioPrincipal;
+import com.uMarket.uMarket.service.BusquedaNlpService;
 import com.uMarket.uMarket.service.EmparejamientoService;
 import com.uMarket.uMarket.service.ProductoService;
 import jakarta.validation.Valid;
@@ -33,10 +35,14 @@ public class ProductoController {
 
 	private final ProductoService productoService;
 	private final EmparejamientoService emparejamientoService;
+	private final BusquedaNlpService busquedaNlpService;
 
-	public ProductoController(ProductoService productoService, EmparejamientoService emparejamientoService) {
+	public ProductoController(ProductoService productoService,
+							  EmparejamientoService emparejamientoService,
+							  BusquedaNlpService busquedaNlpService) {
 		this.productoService = productoService;
 		this.emparejamientoService = emparejamientoService;
+		this.busquedaNlpService = busquedaNlpService;
 	}
 
 	@GetMapping
@@ -47,6 +53,15 @@ public class ProductoController {
 	@GetMapping("/mios")
 	public List<ProductoDto> listarMios(@AuthenticationPrincipal UsuarioPrincipal principal) {
 		return productoService.listarPorUsuario(principal.getUsuario());
+	}
+
+	/**
+	 * Búsqueda en lenguaje natural: interpreta la consulta (LLM o fallback
+	 * heurístico) y devuelve los productos ACTIVO más relevantes.
+	 */
+	@GetMapping("/buscar")
+	public BusquedaNlpResponse buscar(@RequestParam("q") String consulta) {
+		return busquedaNlpService.buscar(consulta);
 	}
 
 	@GetMapping("/{id}")
