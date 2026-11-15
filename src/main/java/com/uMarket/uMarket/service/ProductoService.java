@@ -3,6 +3,7 @@ package com.uMarket.uMarket.service;
 import com.uMarket.uMarket.dto.ModerationResultDTO;
 import com.uMarket.uMarket.dto.ProductoDto;
 import com.uMarket.uMarket.dto.ProductoRequest;
+import com.uMarket.uMarket.dto.StockUpdateEventDTO;
 import com.uMarket.uMarket.dto.TareaPesada;
 import com.uMarket.uMarket.enums.EstadoModeracion;
 import com.uMarket.uMarket.enums.ModerationStatus;
@@ -17,6 +18,7 @@ import com.uMarket.uMarket.repository.ArchivoMultimediaRepository;
 import com.uMarket.uMarket.repository.ImagenEnRevisionRepository;
 import com.uMarket.uMarket.repository.ProductoRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,6 +62,7 @@ public class ProductoService {
 	private final StorageService storageService;
 	private final TareaPesadaProducer tareaPesadaProducer;
 	private final RegistroModeracionService registroModeracionService;
+	private final ApplicationEventPublisher eventPublisher;
 
 	public ProductoService(ProductoRepository productoRepository,
 							ArchivoMultimediaRepository archivoMultimediaRepository,
@@ -70,7 +73,8 @@ public class ProductoService {
 							VisionAnalisisService visionAnalisisService,
 							StorageService storageService,
 							TareaPesadaProducer tareaPesadaProducer,
-							RegistroModeracionService registroModeracionService) {
+							RegistroModeracionService registroModeracionService,
+							ApplicationEventPublisher eventPublisher) {
 		this.productoRepository = productoRepository;
 		this.archivoMultimediaRepository = archivoMultimediaRepository;
 		this.imagenEnRevisionRepository = imagenEnRevisionRepository;
@@ -81,6 +85,7 @@ public class ProductoService {
 		this.storageService = storageService;
 		this.tareaPesadaProducer = tareaPesadaProducer;
 		this.registroModeracionService = registroModeracionService;
+		this.eventPublisher = eventPublisher;
 	}
 
 	@Transactional(readOnly = true)
@@ -462,6 +467,9 @@ public class ProductoService {
 		if (producto.getStock() == 0) {
 			producto.setEstado("VENDIDO");
 		}
+		// Evento de dominio: StockUpdateEventListener lo difunde a /topic/productos/{id}
+		// únicamente cuando esta transacción haga commit.
+		eventPublisher.publishEvent(new StockUpdateEventDTO(productoId, producto.getStock()));
 		return producto;
 	}
 

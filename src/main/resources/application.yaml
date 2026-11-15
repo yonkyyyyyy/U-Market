@@ -42,6 +42,11 @@ jwt:
   secret: ${JWT_SECRET:25d7jmEN6JOU7Jb7wsjb8YkUCdnrZFbM/L6ieishtXOGLXlHGcvrJqgGy+xyoxO1}
   expiration: 86400000
 
+app:
+  websocket:
+    # Orígenes permitidos para el handshake (separados por coma).
+    allowed-origins: ${WS_ALLOWED_ORIGINS:http://localhost:4200}
+
 cloudinary:
   cloud-name: ${CLOUDINARY_CLOUD_NAME:your_cloud_name}
   api-key: ${CLOUDINARY_API_KEY:your_api_key}

@@ -44,6 +44,9 @@ public class SecurityConfig {
 						}))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/api/auth/register", "/api/auth/login").permitAll()
+						// Handshake WebSocket: sin token HTTP. La autenticación se hace
+						// en el frame STOMP CONNECT (WebSocketChannelInterceptor).
+						.requestMatchers("/ws-umarket/**").permitAll()
 						.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
 						// Sin esto, cualquier excepción no controlada se reenvía a /error y
 						// éste (al exigir autenticación) devolvía 401 en vez del 500 real,
