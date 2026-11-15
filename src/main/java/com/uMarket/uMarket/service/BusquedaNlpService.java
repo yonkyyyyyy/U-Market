@@ -1,5 +1,8 @@
 package com.uMarket.uMarket.service;
 
+import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Predicate;
 import com.uMarket.uMarket.dto.BusquedaChatResponse;
 import com.uMarket.uMarket.dto.BusquedaNlpResponse;
 import com.uMarket.uMarket.dto.InterpretacionBusqueda;
@@ -10,6 +13,8 @@ import com.uMarket.uMarket.repository.ProductoRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
@@ -43,8 +48,8 @@ import java.util.stream.Collectors;
  *       categoría, campus y presupuesto máximo.</li>
  *   <li>Si no hay API key, el LLM falla o devuelve algo inválido, se usa un
  *       parser heurístico local. La búsqueda nunca deja de funcionar.</li>
- *   <li>Se cargan los productos ACTIVO y se filtran/ordenan en Java por
- *       relevancia (texto, categoría, campus, etiquetas, precio y recencia).</li>
+ *   <li>Los criterios extraídos se convierten en una consulta parametrizada a
+ *       la base de datos; los resultados se ordenan en Java por relevancia.</li>
  * </ol>
  */
 @Slf4j
@@ -58,7 +63,8 @@ public class BusquedaNlpService {
 	private static final int LIMITE_RESULTADOS = 10;
 	private static final int MAX_PALABRAS_CLAVE = 8;
 	private static final BigDecimal PRECIO_TOPE = new BigDecimal("1000000");
-	private static final BigDecimal MARGEN_PRECIO = new BigDecimal("1.15");
+	private static final String CARACTERES_CON_TILDE = "áéíóúüñ";
+	private static final String CARACTERES_SIN_TILDE = "aeiouun";
 
 	private static final List<String> CATEGORIAS = List.of(
 			"Libros y apuntes",
@@ -171,11 +177,11 @@ public class BusquedaNlpService {
 			return new BusquedaNlpResponse(q, interpretacion, List.of());
 		}
 
-		List<Producto> candidatos = productoRepository.findByEstadoOrderByCreatedAtDesc(
-				ESTADO_ACTIVO, PageRequest.of(0, candidatosMax));
+		List<Producto> candidatos = productoRepository.buscarCandidatosNlp(
+				criterioBusqueda(interpretacion),
+				PageRequest.of(0, candidatosMax, Sort.by(Sort.Direction.DESC, "createdAt")));
 
 		List<ProductoDto> resultados = candidatos.stream()
-				.filter(producto -> esRelevante(interpretacion, producto))
 				.map(producto -> new Scored(producto, puntuar(interpretacion, producto)))
 				.sorted(Comparator.comparingDouble((Scored s) -> s.score()).reversed()
 						.thenComparing(s -> s.producto().getCreatedAt(),
@@ -185,6 +191,60 @@ public class BusquedaNlpService {
 				.toList();
 
 		return new BusquedaNlpResponse(q, interpretacion, resultados);
+	}
+
+	Specification<Producto> criterioBusqueda(InterpretacionBusqueda interpretacion) {
+		return (root, query, builder) -> {
+			List<Predicate> criterios = new ArrayList<>();
+			criterios.add(builder.equal(root.get("estado"), ESTADO_ACTIVO));
+
+			if (interpretacion.categoria() != null) {
+				criterios.add(builder.equal(
+						builder.lower(root.<String>get("categoria")),
+						interpretacion.categoria().toLowerCase(Locale.ROOT)));
+			}
+			if (interpretacion.campus() != null) {
+				criterios.add(builder.equal(
+						builder.lower(root.<String>get("campus")),
+						interpretacion.campus().toLowerCase(Locale.ROOT)));
+			}
+			if (interpretacion.precioMaximo() != null) {
+				criterios.add(builder.lessThanOrEqualTo(
+						root.<BigDecimal>get("precio"), interpretacion.precioMaximo()));
+			}
+
+			Set<String> terminos = new LinkedHashSet<>();
+			terminos.addAll(limpiarLista(interpretacion.palabrasClave()));
+			terminos.addAll(limpiarLista(interpretacion.tags()));
+			if (!terminos.isEmpty()) {
+				List<Predicate> coincidencias = new ArrayList<>();
+				for (String termino : terminos) {
+					String patron = "%" + escaparLike(normalizar(termino)) + "%";
+					for (String campo : List.of("titulo", "descripcion", "categoria", "campus")) {
+						coincidencias.add(builder.like(
+								normalizarSql(builder, root.<String>get(campo)), patron, '\\'));
+					}
+				}
+				criterios.add(builder.or(coincidencias.toArray(Predicate[]::new)));
+			}
+
+			return builder.and(criterios.toArray(Predicate[]::new));
+		};
+	}
+
+	private Expression<String> normalizarSql(
+			CriteriaBuilder builder, Expression<String> campo) {
+		Expression<String> normalizado = builder.lower(campo);
+		for (int i = 0; i < CARACTERES_CON_TILDE.length(); i++) {
+			normalizado = builder.function("replace", String.class, normalizado,
+					builder.literal(String.valueOf(CARACTERES_CON_TILDE.charAt(i))),
+					builder.literal(String.valueOf(CARACTERES_SIN_TILDE.charAt(i))));
+		}
+		return normalizado;
+	}
+
+	private String escaparLike(String valor) {
+		return valor.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
 	}
 
 	private InterpretacionBusqueda interpretar(String consulta) {
@@ -326,27 +386,6 @@ public class BusquedaNlpService {
 				.collect(Collectors.toList());
 	}
 
-	private boolean esRelevante(InterpretacionBusqueda interpretacion, Producto producto) {
-		if (!coincideCategoria(interpretacion.categoria(), producto.getCategoria())) {
-			return false;
-		}
-		if (!coincideCampus(interpretacion.campus(), producto.getCampus())) {
-			return false;
-		}
-		if (!coincidePrecio(interpretacion.precioMaximo(), producto.getPrecio())) {
-			return false;
-		}
-		if (!interpretacion.palabrasClave().isEmpty()) {
-			String texto = textoProducto(producto);
-			boolean coincide = interpretacion.palabrasClave().stream()
-					.anyMatch(palabra -> coincideTexto(palabra, texto));
-			boolean coincideTag = interpretacion.tags().stream()
-					.anyMatch(tag -> coincideTexto(normalizar(tag), texto));
-			return coincide || coincideTag;
-		}
-		return true;
-	}
-
 	private boolean coincideCategoria(String filtro, String categoriaProducto) {
 		if (filtro == null || filtro.isBlank()) {
 			return true;
@@ -359,13 +398,6 @@ public class BusquedaNlpService {
 			return true;
 		}
 		return campusProducto != null && normalizar(filtro).equals(normalizar(campusProducto));
-	}
-
-	private boolean coincidePrecio(BigDecimal precioMaximo, BigDecimal precioProducto) {
-		if (precioMaximo == null || precioProducto == null) {
-			return true;
-		}
-		return precioProducto.compareTo(precioMaximo.multiply(MARGEN_PRECIO)) <= 0;
 	}
 
 	private double puntuar(InterpretacionBusqueda interpretacion, Producto producto) {

@@ -9,6 +9,7 @@ import com.uMarket.uMarket.repository.ProductoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import tools.jackson.databind.ObjectMapper;
@@ -20,7 +21,6 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -62,17 +62,14 @@ class BusquedaNlpServiceTest {
 	}
 
 	private void candidatos(Producto... productos) {
-		when(productoRepository.findByEstadoOrderByCreatedAtDesc(eq("ACTIVO"), any(Pageable.class)))
+		when(productoRepository.buscarCandidatosNlp(
+				org.mockito.ArgumentMatchers.<Specification<Producto>>any(), any(Pageable.class)))
 				.thenReturn(List.of(productos));
 	}
 
 	@Test
-	void interpretaConReglasYFiltraPorCategoriaCampusYPrecio() {
-		candidatos(
-				producto(1L, "Laptop Lenovo", "Ideal para clases", "Tecnología", "Lima Este", "1200"),
-				producto(2L, "Libro de cálculo", "Stewart", "Libros y apuntes", "Lima Este", "50"),
-				producto(3L, "Laptop gamer", "RTX", "Tecnología", "Lima Este", "1800"),
-				producto(4L, "Laptop HP", "Oficina", "Tecnología", "Lima Norte", "1100"));
+	void interpretaConReglasYConsultaCandidatos() {
+		candidatos(producto(1L, "Laptop Lenovo", "Ideal para clases", "Tecnología", "Lima Este", "1200"));
 
 		BusquedaNlpResponse respuesta = servicio(mock(RestClient.class), false, "")
 				.buscar("busco laptop para clases en Lima Este hasta 1500 soles");
@@ -88,9 +85,7 @@ class BusquedaNlpServiceTest {
 
 	@Test
 	void usaLaInterpretacionDelLlmCuandoEstaDisponible() {
-		candidatos(
-				producto(1L, "Laptop Lenovo", "Ideal para clases", "Tecnología", "Lima Este", "1200"),
-				producto(2L, "Tablet Samsung", "Para apuntes", "Tecnología", "Lima Este", "900"));
+		candidatos(producto(1L, "Laptop Lenovo", "Ideal para clases", "Tecnología", "Lima Este", "1200"));
 
 		ApiMock api = apiMock();
 		String json = "{\"palabrasClave\":[\"laptop\"],\"categoria\":\"Tecnologia\","

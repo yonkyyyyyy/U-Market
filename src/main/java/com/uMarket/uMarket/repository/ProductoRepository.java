@@ -13,18 +13,11 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
-public interface ProductoRepository extends JpaRepository<Producto, Long> {
+public interface ProductoRepository extends JpaRepository<Producto, Long>, ProductoNlpSearchRepository {
 
 	List<Producto> findByUsuario(Usuario usuario);
 
 	List<Producto> findByEstado(String estado);
-
-	/**
-	 * Candidatos para la búsqueda en lenguaje natural: publicaciones visibles
-	 * (ACTIVO), de la más reciente a la más antigua. El filtrado por relevancia
-	 * se hace en memoria en {@code BusquedaNlpService}.
-	 */
-	List<Producto> findByEstadoOrderByCreatedAtDesc(String estado, Pageable pageable);
 
 	/**
 	 * Carga el producto con lock pesimista ({@code SELECT ... FOR UPDATE}).
