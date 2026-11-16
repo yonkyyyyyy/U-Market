@@ -1,5 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
+import { FlashSaleStockService } from '../../services/flash-sale-stock.service';
 import { ProductService } from '../../services/product.service';
 import { FlashSale, formatCountdown } from './flash-sale';
 
@@ -53,5 +54,14 @@ describe('FlashSale', () => {
     expect(fixture.nativeElement.textContent).toContain('Calculadora');
     expect(fixture.nativeElement.textContent).not.toContain('Cuaderno');
     expect(fixture.nativeElement.textContent).toContain('4 cupos');
+
+    TestBed.inject(FlashSaleStockService).acceptStockUpdate({
+      channel: 'stock.1',
+      productId: 1,
+      cuposDisponibles: 2
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('2 cupos');
   });
 });

@@ -8,6 +8,10 @@ export interface ProductRequest {
   precio: number;
 }
 
+/**
+ * Optional response contract for flash offers; current product responses omit it.
+ * The server must provide an ISO-8601 deadline and non-negative available stock.
+ */
 export interface FlashSaleOffer {
   precioOferta: number;
   cuposDisponibles: number;
