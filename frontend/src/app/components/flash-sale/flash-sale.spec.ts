@@ -64,4 +64,55 @@ describe('FlashSale', () => {
 
     expect(fixture.nativeElement.textContent).toContain('2 cupos');
   });
+
+  it('renders expiration and oversale errors as accessible alert states', async () => {
+    await TestBed.configureTestingModule({
+      imports: [FlashSale],
+      providers: [provideHttpClient()]
+    }).compileComponents();
+
+    TestBed.inject(ProductService).products.set([
+      {
+        id: 3,
+        titulo: 'Libro usado',
+        descripcion: null,
+        precio: 20,
+        estado: 'DISPONIBLE',
+        createdAt: null,
+        usuarioId: 2,
+        vendedorNombre: 'Ana',
+        ofertaFlash: {
+          precioOferta: 12,
+          cuposDisponibles: 1,
+          finalizaEn: '2000-01-01T00:00:00Z',
+          estado: 'EXPIRADA'
+        }
+      },
+      {
+        id: 4,
+        titulo: 'Audífonos',
+        descripcion: null,
+        precio: 40,
+        estado: 'DISPONIBLE',
+        createdAt: null,
+        usuarioId: 3,
+        vendedorNombre: 'Luis',
+        ofertaFlash: {
+          precioOferta: 25,
+          cuposDisponibles: 1,
+          finalizaEn: '2099-01-01T00:00:00Z',
+          estado: 'SOBREVENTA'
+        }
+      }
+    ]);
+
+    const fixture = TestBed.createComponent(FlashSale);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Expirada');
+    expect(fixture.nativeElement.textContent).toContain('El tiempo para aprovechar esta oferta terminó.');
+    expect(fixture.nativeElement.textContent).toContain('Sin cupos al confirmar');
+    expect(fixture.nativeElement.textContent).toContain('Los cupos se agotaron antes de confirmar la operación.');
+    expect(fixture.nativeElement.querySelectorAll('[role="alert"]').length).toBe(2);
+  });
 });

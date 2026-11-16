@@ -1,7 +1,9 @@
 import { Component, OnDestroy, computed, effect, inject, signal } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { FlashSaleStockService } from '../../services/flash-sale-stock.service';
-import { Product, ProductService } from '../../services/product.service';
+import { FlashSaleOffer, Product, ProductService } from '../../services/product.service';
+
+export type FlashSaleDisplayState = NonNullable<FlashSaleOffer['estado']>;
 
 export function formatCountdown(finalizaEn: string, now = Date.now()): string {
   const endTime = Date.parse(finalizaEn);
@@ -60,6 +62,49 @@ export class FlashSale implements OnDestroy {
 
   availableSpots(productId: number, initialSpots: number): number {
     return this.stockOverrides()[productId] ?? initialSpots;
+  }
+
+  offerState(product: Product & { ofertaFlash: FlashSaleOffer }): FlashSaleDisplayState {
+    const offer = product.ofertaFlash;
+    if (offer.estado === 'SOBREVENTA') {
+      return 'SOBREVENTA';
+    }
+    if (offer.estado === 'EXPIRADA' || this.countdown(offer.finalizaEn) === 'Finalizada') {
+      return 'EXPIRADA';
+    }
+    if (offer.estado === 'AGOTADA' || this.availableSpots(product.id, offer.cuposDisponibles) === 0) {
+      return 'AGOTADA';
+    }
+    return 'ACTIVA';
+  }
+
+  stateLabel(state: FlashSaleDisplayState): string {
+    switch (state) {
+      case 'AGOTADA':
+        return 'Agotada';
+      case 'EXPIRADA':
+        return 'Expirada';
+      case 'SOBREVENTA':
+        return 'Sin cupos al confirmar';
+      default:
+        return 'Disponible';
+    }
+  }
+
+  stateMessage(state: FlashSaleDisplayState, message?: string): string {
+    if (message) {
+      return message;
+    }
+    switch (state) {
+      case 'AGOTADA':
+        return 'Ya no quedan cupos disponibles para esta oferta.';
+      case 'EXPIRADA':
+        return 'El tiempo para aprovechar esta oferta terminó.';
+      case 'SOBREVENTA':
+        return 'Los cupos se agotaron antes de confirmar la operación.';
+      default:
+        return '';
+    }
   }
 
   formatPrice(price: number): string {

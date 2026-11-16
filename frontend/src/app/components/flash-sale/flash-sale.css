@@ -127,3 +127,37 @@
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
+
+.flash-offer--inactive {
+  border-color: #e5e7eb;
+  box-shadow: none;
+}
+
+.flash-offer__status {
+  margin-top: 0.75rem;
+  border-radius: 0.625rem;
+  background: #ecfdf5;
+  padding: 0.65rem 0.75rem;
+  color: #065f46;
+  font-size: 0.8rem;
+}
+
+.flash-offer__status p {
+  margin-top: 0.2rem;
+  font-weight: 400;
+}
+
+.flash-offer__status--sold-out {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.flash-offer__status--expired {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.flash-offer__status--oversold {
+  background: #fef2f2;
+  color: #b91c1c;
+}
