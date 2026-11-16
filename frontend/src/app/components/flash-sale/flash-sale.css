@@ -119,3 +119,11 @@
   color: #6b7280;
   font-size: 0.75rem;
 }
+
+.flash-offer__countdown {
+  margin-top: 0.75rem;
+  color: #b45309;
+  font-size: 0.875rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}

@@ -27,6 +27,9 @@
             <span class="flash-offer__price">{{ formatPrice(product.ofertaFlash.precioOferta) }}</span>
             <span class="flash-offer__regular-price">{{ formatPrice(product.precio) }}</span>
           </div>
+          <p class="flash-offer__countdown">
+            Termina en <time role="timer" [attr.datetime]="product.ofertaFlash.finalizaEn">{{ countdown(product.ofertaFlash.finalizaEn) }}</time>
+          </p>
           <p class="flash-offer__seller">Publicado por {{ product.vendedorNombre }}</p>
         </article>
       }
