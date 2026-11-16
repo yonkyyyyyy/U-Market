@@ -8,6 +8,14 @@ export interface ProductRequest {
   precio: number;
 }
 
+export interface FlashSaleOffer {
+  precioOferta: number;
+  cuposDisponibles: number;
+  finalizaEn: string;
+  estado?: 'ACTIVA' | 'AGOTADA' | 'EXPIRADA' | 'SOBREVENTA';
+  mensaje?: string;
+}
+
 export interface Product {
   id: number;
   titulo: string;
@@ -17,6 +25,7 @@ export interface Product {
   createdAt: string | null;
   usuarioId: number;
   vendedorNombre: string;
+  ofertaFlash?: FlashSaleOffer;
 }
 
 @Injectable({
