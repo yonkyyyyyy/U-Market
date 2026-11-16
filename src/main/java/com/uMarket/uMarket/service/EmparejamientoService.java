@@ -39,7 +39,6 @@ public class EmparejamientoService {
 	private static final int LIMITE_SUGERENCIAS = 10;
 
 	private static final String ESTADO_PRODUCTO_ACTIVO = "ACTIVO";
-	private static final String ESTADO_DEMANDA_ACTIVA = "ACTIVA";
 
 	private static final Set<String> STOPWORDS = Set.of(
 			"busco", "busca", "buscan", "necesito", "quiero", "compro",
@@ -180,9 +179,16 @@ public class EmparejamientoService {
 	}
 
 	private List<Demanda> demandasCompatibles(Producto producto) {
-		return demandaRepository.findByEstado(ESTADO_DEMANDA_ACTIVA).stream()
-				.filter(demanda -> demanda.getUsuario() != null)
-				.filter(demanda -> !demanda.getUsuario().getId().equals(producto.getUsuario().getId()))
+		String keyword = extraerPalabraClave(producto.getTitulo(), producto.getDescripcion());
+		String categoria = producto.getCategoria() == null ? "" : producto.getCategoria();
+		String campus = producto.getCampus() == null ? "" : producto.getCampus();
+		if (keyword.isEmpty() && categoria.isBlank() && campus.isBlank()) {
+			return List.of();
+		}
+
+		Pageable pageable = PageRequest.of(0, candidatosMax);
+		return demandaRepository.buscarCandidatasParaProducto(
+						categoria, keyword, campus, producto.getUsuario().getId(), pageable).stream()
 				.map(demanda -> new ScoredDemanda(demanda, calcularScore(demanda, producto)))
 				.filter(scored -> scored.score >= umbral)
 				.sorted(Comparator.comparingDouble((ScoredDemanda s) -> s.score).reversed()

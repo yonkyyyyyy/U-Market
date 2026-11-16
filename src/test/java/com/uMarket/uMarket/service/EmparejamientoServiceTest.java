@@ -13,6 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 
 import java.math.BigDecimal;
@@ -24,6 +25,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -70,7 +72,9 @@ class EmparejamientoServiceTest {
 		incompatible.setFechaCreacion(LocalDateTime.now().minusYears(2));
 
 		when(productoRepository.findById(10L)).thenReturn(Optional.of(producto));
-		when(demandaRepository.findByEstado("ACTIVA")).thenReturn(List.of(compatible, incompatible));
+		when(demandaRepository.buscarCandidatasParaProducto(
+				eq("TECNOLOGIA"), eq("calculadora"), eq("Lima Este"), eq(1L), any(Pageable.class)))
+				.thenReturn(List.of(compatible, incompatible));
 
 		List<DemandaResponseDTO> resultado = emparejamientoService
 				.buscarDemandasCompatiblesParaProducto(10L, vendedor);
@@ -94,7 +98,9 @@ class EmparejamientoServiceTest {
 				"Lima Este", Set.of("casio"));
 
 		when(productoRepository.findById(10L)).thenReturn(Optional.of(producto));
-		when(demandaRepository.findByEstado("ACTIVA")).thenReturn(List.of(compatible));
+		when(demandaRepository.buscarCandidatasParaProducto(
+				eq("TECNOLOGIA"), eq("calculadora"), eq("Lima Este"), eq(1L), any(Pageable.class)))
+				.thenReturn(List.of(compatible));
 
 		emparejamientoService.notificarDemandasCompatibles(10L);
 

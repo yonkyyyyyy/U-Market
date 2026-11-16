@@ -1,6 +1,7 @@
 package com.uMarket.uMarket.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -39,6 +40,7 @@ public class Demanda {
 
 	/** Etiquetas normalizadas para el matching de demanda inversa. */
 	@ElementCollection(fetch = FetchType.LAZY)
+	@BatchSize(size = 32)
 	@CollectionTable(name = "demanda_tags", joinColumns = @JoinColumn(name = "demanda_id"))
 	@Column(name = "tag", length = 40, nullable = false)
 	private Set<String> tags = new LinkedHashSet<>();
