@@ -325,6 +325,22 @@
   white-space: pre-line;
 }
 
+.demand-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+
+.keyword-tag {
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  background: #eef3ea;
+  color: #3d5c46;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
 .demand-card__details {
   display: flex;
   flex-wrap: wrap;

@@ -1,0 +1,5 @@
+# Pruebas de Estrés y Concurrencia - JMeter
+- Se configuró el Test Plan apuntando a la IP de producción en Google Cloud: 34.172.68.93
+- **Escenario A (Login):** Configuración de JSON Extractor para capturar el token JWT de respuesta. Resultado: 0% de error en concurrencia.
+- **Escenario B (Catálogo):** Implementación de HTTP Header Manager con Authorization Bearer Token. Resultado: 0% de error en lecturas concurrentes (GET).
+- **Escenario C (Edición):** Petición PUT estructurada y dejada en "Disable" a la espera de la integración del Bloqueo Optimista (@Version) en la rama develop.

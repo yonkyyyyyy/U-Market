@@ -15,8 +15,14 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.text.Normalizer;
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class DemandaServiceImpl implements DemandaService {
@@ -51,6 +57,19 @@ public class DemandaServiceImpl implements DemandaService {
 				.map(DemandaResponseDTO::from);
 	}
 
+	/**
+	 * Actualización con Bloqueo Optimista transparente.
+	 * <p>
+	 * Flujo ACID: dentro de la transacción se carga la entidad gestionada
+	 * (con su campo {@code @Version}), se mutan los campos y se invoca
+	 * {@code save()}. En el flush/commit Hibernate ejecuta:
+	 * {@code UPDATE demandas SET ..., version = version + 1 WHERE id = ? AND version = ?}.
+	 * Si otro usuario modificó el registro entre la lectura y la escritura,
+	 * la condición del WHERE falla (0 filas afectadas) y JPA lanza
+	 * {@code ObjectOptimisticLockingFailureException} → HTTP 409 Conflict
+	 * gestionado en {@code GlobalExceptionHandler}. No se requiere código
+	 * adicional: el control de concurrencia es transparente.
+	 */
 	@Override
 	@Transactional
 	public DemandaResponseDTO actualizar(Long id, DemandaRequestDTO request) {
@@ -61,6 +80,9 @@ public class DemandaServiceImpl implements DemandaService {
 		demanda.setDescripcion(request.descripcion());
 		demanda.setPresupuestoEstimado(request.presupuestoEstimado());
 		demanda.setCategoria(normalizarCategoria(request.categoria()));
+		demanda.setCampus(normalizarCampus(request.campus()));
+		demanda.setTags(normalizarTags(request.tags()));
+		// save() dispara el chequeo optimista: compara e incrementa version automáticamente
 		return DemandaResponseDTO.from(demandaRepository.save(demanda));
 	}
 
@@ -130,6 +152,8 @@ public class DemandaServiceImpl implements DemandaService {
 		demanda.setDescripcion(request.descripcion());
 		demanda.setPresupuestoEstimado(request.presupuestoEstimado());
 		demanda.setCategoria(normalizarCategoria(request.categoria()));
+		demanda.setCampus(normalizarCampus(request.campus()));
+		demanda.setTags(normalizarTags(request.tags()));
 		demanda.setEstado("ACTIVA");
 		demanda.setFechaCreacion(LocalDateTime.now());
 		return demanda;
@@ -148,6 +172,39 @@ public class DemandaServiceImpl implements DemandaService {
 			return null;
 		}
 		return categoria.trim().toUpperCase(java.util.Locale.ROOT);
+	}
+
+	private String normalizarCampus(String campus) {
+		if (campus == null || campus.isBlank()) {
+			return null;
+		}
+		return campus.trim();
+	}
+
+	/**
+	 * Normaliza las etiquetas para que el matching sea consistente: sin tildes,
+	 * en minúsculas, sin duplicados y con un máximo de 10.
+	 */
+	private Set<String> normalizarTags(List<String> tags) {
+		if (tags == null || tags.isEmpty()) {
+			return new LinkedHashSet<>();
+		}
+		return tags.stream()
+				.filter(Objects::nonNull)
+				.map(this::normalizarTag)
+				.filter(tag -> !tag.isBlank())
+				.distinct()
+				.limit(10)
+				.collect(Collectors.toCollection(LinkedHashSet::new));
+	}
+
+	private String normalizarTag(String tag) {
+		String nfd = Normalizer.normalize(tag, Normalizer.Form.NFD);
+		String plano = nfd.replaceAll("\\p{M}", "")
+				.toLowerCase(Locale.ROOT)
+				.trim()
+				.replaceAll("\\s+", " ");
+		return plano.length() > 40 ? plano.substring(0, 40) : plano;
 	}
 
 	private Demanda obtenerEntidad(Long id) {

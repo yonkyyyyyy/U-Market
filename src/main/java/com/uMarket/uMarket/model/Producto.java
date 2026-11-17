@@ -1,4 +1,4 @@
-package com.uMarket.uMarket.model;
+		package com.uMarket.uMarket.model;
 
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -35,6 +35,14 @@ public class Producto {
 	@Column(length = 80)
 	private String categoria;
 
+	/** Campus de entrega; se usa para el cruce espacial con las demandas. */
+	@Column(length = 80)
+	private String campus;
+
+	// Unidades disponibles. Se descuenta con UPDATE condicional (ver ProductoRepository.descontarStock).
+	@Column(nullable = false, columnDefinition = "INTEGER NOT NULL DEFAULT 1")
+	private Integer stock = 1;
+
 	// Estado DERIVADO de la moderación (lo calcula ProductoService.derivarEstado):
 	// PENDIENTE y RECHAZADO NO son visibles en el catálogo; ACTIVO/PAUSADO/VENDIDO sí.
 	@Column(nullable = false, length = 30)
@@ -42,6 +50,9 @@ public class Producto {
 
 	@Column(name = "created_at")
 	private LocalDateTime createdAt;
+
+	@Version
+	private Long version;
 
 	@OneToMany(mappedBy = "producto", cascade = CascadeType.ALL, orphanRemoval = true)
 	private java.util.List<ArchivoMultimedia> archivosMultimedia = new java.util.ArrayList<>();

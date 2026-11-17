@@ -1,9 +1,20 @@
+server:
+  tomcat:
+    threads:
+      # [QA/DevOps] Afinamiento: Se aumentan los hilos máximos a 400 
+      # para soportar tráfico masivo (500+ usuarios concurrentes) en Ferias Flash.
+      max: 400
+
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/U-Market
     username: postgres
     password: 15262005
     driver-class-name: org.postgresql.Driver
+    hikari:
+      # [QA/DevOps] Afinamiento: Se amplía el pool de conexiones a 50
+      # para evitar cuellos de botella al procesar la cola asíncrona de imágenes en RabbitMQ.
+      maximum-pool-size: 50
   jpa:
     hibernate:
       ddl-auto: update
@@ -42,10 +53,21 @@ jwt:
   secret: ${JWT_SECRET:25d7jmEN6JOU7Jb7wsjb8YkUCdnrZFbM/L6ieishtXOGLXlHGcvrJqgGy+xyoxO1}
   expiration: 86400000
 
+app:
+  websocket:
+    # Orígenes permitidos para el handshake (separados por coma).
+    allowed-origins: ${WS_ALLOWED_ORIGINS:http://localhost:4200}
+
 cloudinary:
   cloud-name: ${CLOUDINARY_CLOUD_NAME:your_cloud_name}
   api-key: ${CLOUDINARY_API_KEY:your_api_key}
   api-secret: ${CLOUDINARY_API_SECRET:your_api_secret}
+
+matching:
+  # Umbral mínimo de score (0..1) para incluir un producto sugerido.
+  umbral: ${MATCHING_UMBRAL:0.25}
+  # Máximo de candidatos a traer de BD antes del scoring en memoria.
+  candidatos-max: ${MATCHING_CANDIDATOS_MAX:100}
 
 openai:
   # API key externa: NUNCA commiteada. Se configura con: setx OPENAI_API_KEY "sk-..."
@@ -55,7 +77,16 @@ openai:
   # Umbral de score por categoría (0..1) para considerar el contenido inapropiado.
   # Se calibra con el set de evaluación (parte del "afinamiento").
   umbral: 0.5
+  # Capa dura (blacklist) de términos que se rechazan SIEMPRE, aunque OpenAI no
+  # los marque. Lista separada por comas. Si está vacía, se usa la lista por
+  # defecto del servicio (armas, drogas, insultos comunes). Para desactivarla,
+  # poner un valor que no coincida (p. ej. "_ninguna_").
+  blacklist: ${OPENAI_BLACKLIST:}
   # Visión artificial: análisis de imágenes de productos (sustancias prohibidas).
   # Modelo multimodal de OpenAI. El umbral se calibra con el set de imágenes de evaluación.
   vision-model: gpt-4o-mini
   vision-umbral: 0.5
+  # Búsqueda en lenguaje natural: modelo de chat que extrae los filtros de la consulta.
+  # Si se desactiva o la API falla, se usa el parser heurístico local (fallback).
+  busqueda-habilitada: ${OPENAI_BUSQUEDA_HABILITADA:true}
+  busqueda-model: ${OPENAI_BUSQUEDA_MODEL:gpt-4o-mini}

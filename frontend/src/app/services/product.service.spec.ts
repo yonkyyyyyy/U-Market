@@ -40,6 +40,45 @@ describe('ProductService', () => {
     expect(service.products()).toEqual(products);
   });
 
+  it('searches products using the NLP endpoint', () => {
+    const response = {
+      consulta: 'laptop barata',
+      interpretacion: {
+        palabrasClave: ['laptop'],
+        categoria: 'Tecnología',
+        campus: null,
+        precioMaximo: null,
+        tags: [],
+        origen: 'LLM' as const
+      },
+      resultados: [{
+        id: 3,
+        titulo: 'Laptop Lenovo',
+        descripcion: 'Ideal para clases',
+        precio: 1200,
+        categoria: 'Tecnología',
+        campus: 'Lima Este',
+        estado: 'ACTIVO',
+        createdAt: null,
+        usuarioId: 2,
+        vendedorNombre: 'Ana'
+      }]
+    };
+    let result: unknown;
+
+    service.search('laptop barata').subscribe(value => result = value);
+
+    const request = httpTestingController.expectOne(
+      req => req.url === '/api/productos/buscar' && req.params.get('q') === 'laptop barata'
+    );
+    expect(request.request.method).toBe('GET');
+    request.flush(response);
+
+    expect(result).toEqual(response);
+    // La búsqueda no debe reemplazar el catálogo compartido del carrusel.
+    expect(service.products()).toEqual([]);
+  });
+
   it('publishes a product and adds it to the shared list', () => {
     const payload = { titulo: 'Libro de cálculo', descripcion: 'Edición reciente', precio: 25 };
     const created = {

@@ -41,7 +41,11 @@ public class ModeracionService {
 	/**
 	 * Bloquea una demanda y registra la acción en auditoría dentro de la misma
 	 * transacción: si falla el guardado de la auditoría, se revierte el cambio
-	 * de estado.
+	 * de estado. Incluye control optimista: el {@code save()} verifica la
+	 * columna {@code version} de forma transparente.
+	 * SQL generado: UPDATE demandas SET estado=?, version=version+1 WHERE id=? AND version=?
+	 * Si dos moderadores intentan bloquear la misma demanda concurrentemente,
+	 * solo uno tiene éxito; el otro recibe 409 Conflict.
 	 *
 	 * @param demandaId id de la demanda a bloquear
 	 * @param adminId   id del administrador que ejecuta la acción (viene del JWT)
@@ -60,6 +64,7 @@ public class ModeracionService {
 		}
 
 		demanda.setEstado(ESTADO_BLOQUEADA);
+		// Chequeo optimista transparente: si version colisiona lanza ObjectOptimisticLockingFailureException
 		Demanda guardada = demandaRepository.save(demanda);
 
 		AuditoriaDemanda auditoria = new AuditoriaDemanda();

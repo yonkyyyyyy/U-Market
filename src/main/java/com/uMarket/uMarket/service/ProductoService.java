@@ -3,11 +3,14 @@ package com.uMarket.uMarket.service;
 import com.uMarket.uMarket.dto.ModerationResultDTO;
 import com.uMarket.uMarket.dto.ProductoDto;
 import com.uMarket.uMarket.dto.ProductoRequest;
+import com.uMarket.uMarket.dto.StockUpdateEventDTO;
 import com.uMarket.uMarket.dto.TareaPesada;
 import com.uMarket.uMarket.enums.EstadoModeracion;
 import com.uMarket.uMarket.enums.ModerationStatus;
+import com.uMarket.uMarket.event.ProductoActivadoEvent;
 import com.uMarket.uMarket.exception.ContenidoInapropiadoException;
 import com.uMarket.uMarket.exception.ResourceNotFoundException;
+import com.uMarket.uMarket.exception.StockInsuficienteException;
 import com.uMarket.uMarket.model.ArchivoMultimedia;
 import com.uMarket.uMarket.model.ImagenEnRevision;
 import com.uMarket.uMarket.model.Producto;
@@ -16,6 +19,7 @@ import com.uMarket.uMarket.repository.ArchivoMultimediaRepository;
 import com.uMarket.uMarket.repository.ImagenEnRevisionRepository;
 import com.uMarket.uMarket.repository.ProductoRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -59,6 +63,7 @@ public class ProductoService {
 	private final StorageService storageService;
 	private final TareaPesadaProducer tareaPesadaProducer;
 	private final RegistroModeracionService registroModeracionService;
+	private final ApplicationEventPublisher eventPublisher;
 
 	public ProductoService(ProductoRepository productoRepository,
 							ArchivoMultimediaRepository archivoMultimediaRepository,
@@ -69,7 +74,8 @@ public class ProductoService {
 							VisionAnalisisService visionAnalisisService,
 							StorageService storageService,
 							TareaPesadaProducer tareaPesadaProducer,
-							RegistroModeracionService registroModeracionService) {
+							RegistroModeracionService registroModeracionService,
+							ApplicationEventPublisher eventPublisher) {
 		this.productoRepository = productoRepository;
 		this.archivoMultimediaRepository = archivoMultimediaRepository;
 		this.imagenEnRevisionRepository = imagenEnRevisionRepository;
@@ -80,6 +86,7 @@ public class ProductoService {
 		this.storageService = storageService;
 		this.tareaPesadaProducer = tareaPesadaProducer;
 		this.registroModeracionService = registroModeracionService;
+		this.eventPublisher = eventPublisher;
 	}
 
 	@Transactional(readOnly = true)
@@ -143,6 +150,7 @@ public class ProductoService {
 		producto.setDescripcion(request.descripcion());
 		producto.setPrecio(request.precio());
 		producto.setCategoria(normalizarCategoria(request.categoria()));
+		producto.setCampus(normalizarCampus(request.campus()));
 		// Nace BLOQUEADA: no es visible hasta que el pipeline asíncrono la resuelva.
 		producto.setEstado(ESTADO_PENDIENTE);
 		producto.setCreatedAt(LocalDateTime.now());
@@ -175,12 +183,17 @@ public class ProductoService {
 	public ProductoDto actualizar(Long id, Usuario usuario, ProductoRequest request) {
 		Producto producto = obtenerEntidad(id);
 		verificarPropietario(producto, usuario);
+		String estadoAnterior = producto.getEstado();
 		// Tarea IA: también se revisa el texto al EDITAR (antes se podía esquivar el filtro).
 		ResultadoTexto texto = revisarTexto(request.titulo(), request.descripcion(), usuario, id);
 		producto.setTitulo(request.titulo().trim());
 		producto.setDescripcion(request.descripcion());
 		producto.setPrecio(request.precio());
 		producto.setCategoria(normalizarCategoria(request.categoria()));
+		// Si el cliente no envía campus (clientes antiguos), se conserva el actual.
+		if (request.campus() != null) {
+			producto.setCampus(normalizarCampus(request.campus()));
+		}
 		// El estado de un producto aún no aprobado lo manda la moderación: no se puede
 		// "activar" a mano uno PENDIENTE o RECHAZADO.
 		if (!ESTADO_PENDIENTE.equals(producto.getEstado()) && !ESTADO_RECHAZADO.equals(producto.getEstado())) {
@@ -188,6 +201,12 @@ public class ProductoService {
 		}
 		Producto guardado = productoRepository.save(producto);
 		registrarLogTexto(guardado, usuario, texto);
+
+		// Demanda inversa: reactivar una publicación por edición también debe
+		// buscar demandas compatibles (mismo criterio que recalcularEstado).
+		if (!ESTADO_ACTIVO.equals(estadoAnterior) && ESTADO_ACTIVO.equals(guardado.getEstado())) {
+			eventPublisher.publishEvent(new ProductoActivadoEvent(guardado.getId()));
+		}
 		return ProductoDto.from(guardado);
 	}
 
@@ -318,8 +337,16 @@ public class ProductoService {
 		if (producto == null) {
 			return;
 		}
-		producto.setEstado(derivarEstado(imagenEnRevisionRepository.findByProductoId(productoId)));
+		String estadoAnterior = producto.getEstado();
+		String nuevoEstado = derivarEstado(imagenEnRevisionRepository.findByProductoId(productoId));
+		producto.setEstado(nuevoEstado);
 		productoRepository.save(producto);
+
+		// Demanda inversa: solo cuando la publicación pasa a ACTIVO se buscan
+		// demandas compatibles (campus + tags) y se alerta a sus autores.
+		if (!ESTADO_ACTIVO.equals(estadoAnterior) && ESTADO_ACTIVO.equals(nuevoEstado)) {
+			eventPublisher.publishEvent(new ProductoActivadoEvent(productoId));
+		}
 	}
 
 	/**
@@ -363,6 +390,13 @@ public class ProductoService {
 			return null;
 		}
 		return categoria.trim().toUpperCase(Locale.ROOT);
+	}
+
+	private String normalizarCampus(String campus) {
+		if (campus == null || campus.isBlank()) {
+			return null;
+		}
+		return campus.trim();
 	}
 
 	private String normalizarEstado(String estado) {
@@ -432,6 +466,39 @@ public class ProductoService {
 			case FAILED, PENDING -> "La IA de texto no estuvo disponible (fail-open: se publicó igual)";
 			case APPROVED -> null;
 		};
+	}
+
+	/**
+	 * Descuenta {@code cantidad} unidades en una transacción. Si el UPDATE condicional
+	 * no afecta filas, otra compra ganó el stock: se lanza StockInsuficienteException y
+	 * la transacción hace rollback. Si el producto no existe, se informa como 404.
+	 */
+	@Transactional
+	public Producto comprar(Long productoId, int cantidad, Usuario comprador) {
+		if (cantidad <= 0) {
+			throw new IllegalArgumentException("La cantidad debe ser mayor que cero");
+		}
+		Producto producto = productoRepository.findById(productoId)
+				.orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado: " + productoId));
+		if (producto.getUsuario().getId().equals(comprador.getId())) {
+			throw new IllegalArgumentException("No puedes comprar tu propio producto");
+		}
+		if (!ESTADO_ACTIVO.equals(producto.getEstado())) {
+			throw new IllegalArgumentException("El producto no está disponible para la compra");
+		}
+		if (productoRepository.descontarStock(productoId, cantidad) == 0) {
+			throw new StockInsuficienteException(productoId);
+		}
+		// El UPDATE masivo limpió el contexto de persistencia: releemos el stock real.
+		producto = productoRepository.findById(productoId)
+				.orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado: " + productoId));
+		if (producto.getStock() == 0) {
+			producto.setEstado("VENDIDO");
+		}
+		// Evento de dominio: StockUpdateEventListener lo difunde a /topic/productos/{id}
+		// únicamente cuando esta transacción haga commit.
+		eventPublisher.publishEvent(new StockUpdateEventDTO(productoId, producto.getStock()));
+		return producto;
 	}
 
 	private String motivoImagen(ModerationStatus status) {

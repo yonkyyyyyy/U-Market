@@ -145,6 +145,13 @@
   padding-left: 2.45rem;
 }
 
+.field-hint {
+  margin: 0.35rem 0 0;
+  color: #8a8f86;
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
 .form-note {
   margin: 0 0 1rem;
   padding: 0.65rem 0.75rem;

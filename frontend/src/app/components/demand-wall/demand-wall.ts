@@ -103,12 +103,14 @@ export class DemandWall implements OnInit {
       const matchesSearch = !search || [
         demand.titulo,
         demand.descripcion ?? '',
-        demand.usuarioNombre
+        demand.usuarioNombre,
+        (demand.tags ?? []).join(' ')
       ].some(value => value.toLocaleLowerCase('es').includes(search));
       const category = demand.categoria ?? details?.category ?? '';
       const matchesCategory = !this.selectedCategory
         || this.normalize(category) === this.normalize(this.selectedCategory);
-      const matchesCampus = !this.selectedCampus || details?.campus === this.selectedCampus;
+      const matchesCampus = !this.selectedCampus
+        || this.campusFor(demand) === this.selectedCampus;
       const isStillValid = !details || this.getExpiryTimestamp(demand, details) > Date.now();
 
       return matchesSearch && matchesCategory && matchesCampus && isStillValid;
@@ -141,7 +143,7 @@ export class DemandWall implements OnInit {
         this.isFormOpen.set(false);
         this.toastService.success(
           'Solicitud publicada',
-          'La categoría quedó guardada. Campus y vigencia se conservan mientras esta vista esté abierta.'
+          'La categoría, el campus y las etiquetas quedaron guardados. La vigencia se conserva mientras esta vista esté abierta.'
         );
       },
       error: (error: unknown) => {
@@ -160,7 +162,7 @@ export class DemandWall implements OnInit {
   }
 
   campusFor(demand: Demand): string {
-    return this.detailsById.get(demand.id)?.campus ?? 'Campus por confirmar';
+    return demand.campus ?? this.detailsById.get(demand.id)?.campus ?? 'Campus por confirmar';
   }
 
   validUntil(demand: Demand): string {
