@@ -1,0 +1,50 @@
+<section class="flash-sale" aria-labelledby="flash-sale-title">
+  <div class="flash-sale__heading">
+    <div>
+      <p class="flash-sale__eyebrow">Por tiempo limitado</p>
+      <h2 id="flash-sale-title">Feria Flash</h2>
+    </div>
+    <span class="flash-sale__badge">Ofertas especiales</span>
+  </div>
+
+  @if (offers().length === 0) {
+    <div class="flash-sale__empty">
+      Las ofertas flash aparecerán aquí cuando estén disponibles.
+    </div>
+  } @else {
+    <div class="flash-sale__grid">
+      @for (product of offers(); track product.id) {
+        @let state = offerState(product);
+        <article class="flash-offer" [class.flash-offer--inactive]="state !== 'ACTIVA'">
+          <div class="flash-offer__top">
+            <span class="flash-offer__label">Oferta flash</span>
+            <span class="flash-offer__stock">{{ availableSpots(product.id, product.ofertaFlash.cuposDisponibles) }} cupos</span>
+          </div>
+          <h3>{{ product.titulo }}</h3>
+          @if (product.descripcion) {
+            <p class="flash-offer__description">{{ product.descripcion }}</p>
+          }
+          <div class="flash-offer__prices">
+            <span class="flash-offer__price">{{ formatPrice(product.ofertaFlash.precioOferta) }}</span>
+            <span class="flash-offer__regular-price">{{ formatPrice(product.precio) }}</span>
+          </div>
+          <p class="flash-offer__countdown">
+            Termina en <time role="timer" [attr.datetime]="product.ofertaFlash.finalizaEn">{{ countdown(product.ofertaFlash.finalizaEn) }}</time>
+          </p>
+          <div
+            class="flash-offer__status"
+            [class.flash-offer__status--sold-out]="state === 'AGOTADA'"
+            [class.flash-offer__status--expired]="state === 'EXPIRADA'"
+            [class.flash-offer__status--oversold]="state === 'SOBREVENTA'"
+            [attr.role]="state === 'ACTIVA' ? null : 'alert'">
+            <strong>{{ stateLabel(state) }}</strong>
+            @if (state !== 'ACTIVA') {
+              <p>{{ stateMessage(state, product.ofertaFlash.mensaje) }}</p>
+            }
+          </div>
+          <p class="flash-offer__seller">Publicado por {{ product.vendedorNombre }}</p>
+        </article>
+      }
+    </div>
+  }
+</section>

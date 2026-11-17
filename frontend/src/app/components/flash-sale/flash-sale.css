@@ -1,0 +1,163 @@
+:host {
+  display: block;
+  margin-top: 2rem;
+}
+
+.flash-sale {
+  border: 1px solid #d1fae5;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, #ecfdf5, #fff 60%);
+  padding: 1.25rem;
+}
+
+.flash-sale__heading,
+.flash-offer__top,
+.flash-offer__prices {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.flash-sale__heading {
+  margin-bottom: 1rem;
+}
+
+.flash-sale__eyebrow {
+  color: #047857;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.flash-sale h2 {
+  margin-top: 0.2rem;
+  color: #064e3b;
+  font-size: 1.5rem;
+  font-weight: 750;
+}
+
+.flash-sale__badge,
+.flash-offer__label,
+.flash-offer__stock {
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.flash-sale__badge {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.flash-sale__empty {
+  border: 1px dashed #a7f3d0;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  color: #4b5563;
+  text-align: center;
+}
+
+.flash-sale__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 1rem;
+}
+
+.flash-offer {
+  border: 1px solid #d1d5db;
+  border-radius: 0.875rem;
+  background: #fff;
+  padding: 1rem;
+  box-shadow: 0 8px 20px rgb(6 78 59 / 7%);
+}
+
+.flash-offer__label {
+  background: #065f46;
+  color: #fff;
+}
+
+.flash-offer__stock {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.flash-offer h3 {
+  margin-top: 1rem;
+  color: #111827;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.flash-offer__description {
+  margin-top: 0.35rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.flash-offer__prices {
+  justify-content: flex-start;
+  margin-top: 1rem;
+}
+
+.flash-offer__price {
+  color: #047857;
+  font-size: 1.25rem;
+  font-weight: 750;
+}
+
+.flash-offer__regular-price {
+  color: #6b7280;
+  font-size: 0.875rem;
+  text-decoration: line-through;
+}
+
+.flash-offer__seller {
+  margin-top: 0.75rem;
+  color: #6b7280;
+  font-size: 0.75rem;
+}
+
+.flash-offer__countdown {
+  margin-top: 0.75rem;
+  color: #b45309;
+  font-size: 0.875rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.flash-offer--inactive {
+  border-color: #e5e7eb;
+  box-shadow: none;
+}
+
+.flash-offer__status {
+  margin-top: 0.75rem;
+  border-radius: 0.625rem;
+  background: #ecfdf5;
+  padding: 0.65rem 0.75rem;
+  color: #065f46;
+  font-size: 0.8rem;
+}
+
+.flash-offer__status p {
+  margin-top: 0.2rem;
+  font-weight: 400;
+}
+
+.flash-offer__status--sold-out {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.flash-offer__status--expired {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.flash-offer__status--oversold {
+  background: #fef2f2;
+  color: #b91c1c;
+}

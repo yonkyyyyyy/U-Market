@@ -11,6 +11,7 @@ import { SmartSearch } from '../../components/smart-search/smart-search';
     Navbar,
     SmartSearch,
     ProductCarousel,
+    FlashSale,
     CreatePost,
     DemandWall
   ],

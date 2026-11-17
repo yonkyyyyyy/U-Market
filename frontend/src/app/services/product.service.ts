@@ -9,6 +9,18 @@ export interface ProductRequest {
   campus?: string;
 }
 
+/**
+ * Optional response contract for flash offers; current product responses omit it.
+ * The server must provide an ISO-8601 deadline and non-negative available stock.
+ */
+export interface FlashSaleOffer {
+  precioOferta: number;
+  cuposDisponibles: number;
+  finalizaEn: string;
+  estado?: 'ACTIVA' | 'AGOTADA' | 'EXPIRADA' | 'SOBREVENTA';
+  mensaje?: string;
+}
+
 export interface Product {
   id: number;
   titulo: string;
@@ -20,6 +32,7 @@ export interface Product {
   createdAt: string | null;
   usuarioId: number;
   vendedorNombre: string;
+  ofertaFlash?: FlashSaleOffer;
 }
 
 export interface SearchInterpretation {

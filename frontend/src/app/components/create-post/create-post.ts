@@ -37,7 +37,17 @@ export class CreatePost {
   isPublishing = false;
   publishError = '';
 
+  selectPublicationType(type: 'normal' | 'flash'): void {
+    this.publicationType = type;
+    this.publishError = '';
+  }
+
   publish(): void {
+    if (this.publicationType === 'flash') {
+      this.publishError = 'Las ofertas Flash todavía no se pueden guardar. El servidor aún no admite ese tipo de publicación.';
+      return;
+    }
+
     const title = this.title.trim();
     const price = Number(this.price);
 
@@ -60,6 +70,7 @@ export class CreatePost {
 
     this.productService.create(payload).subscribe({
       next: () => {
+        this.publicationType = 'normal';
         this.title = '';
         this.description = '';
         this.price = null;
