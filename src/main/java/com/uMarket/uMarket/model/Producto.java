@@ -1,4 +1,4 @@
-package com.uMarket.uMarket.model;
+		package com.uMarket.uMarket.model;
 
 import jakarta.persistence.*;
 import lombok.Getter;
