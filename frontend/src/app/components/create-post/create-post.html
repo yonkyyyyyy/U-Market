@@ -5,6 +5,53 @@
     <h2 class="mb-1 text-xl font-semibold text-gray-900">¿Qué quieres publicar?</h2>
     <p class="mb-6 text-sm text-gray-500">Comparte un producto con la comunidad de U-Market.</p>
 
+    <fieldset class="mb-5">
+      <legend class="mb-2 block text-sm font-medium text-gray-900">Tipo de publicación</legend>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label
+          class="flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors"
+          [class.border-blue-600]="publicationType === 'normal'"
+          [class.bg-blue-50]="publicationType === 'normal'"
+          [class.border-gray-300]="publicationType !== 'normal'">
+          <input
+            type="radio"
+            name="publicationType"
+            value="normal"
+            [checked]="publicationType === 'normal'"
+            (change)="selectPublicationType('normal')"
+            class="mt-1 accent-blue-600" />
+          <span>
+            <span class="block text-sm font-semibold text-gray-900">Publicación normal</span>
+            <span class="mt-1 block text-xs text-gray-500">Publica tu producto con su precio habitual.</span>
+          </span>
+        </label>
+
+        <label
+          class="flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors"
+          [class.border-emerald-600]="publicationType === 'flash'"
+          [class.bg-emerald-50]="publicationType === 'flash'"
+          [class.border-gray-300]="publicationType !== 'flash'">
+          <input
+            type="radio"
+            name="publicationType"
+            value="flash"
+            [checked]="publicationType === 'flash'"
+            (change)="selectPublicationType('flash')"
+            class="mt-1 accent-emerald-600" />
+          <span>
+            <span class="block text-sm font-semibold text-gray-900">Oferta Flash</span>
+            <span class="mt-1 block text-xs text-gray-500">Elige esta opción para una oferta por tiempo limitado.</span>
+          </span>
+        </label>
+      </div>
+    </fieldset>
+
+    @if (publicationType === 'flash') {
+      <p class="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" role="status">
+        La publicación de ofertas Flash todavía no está habilitada porque el servidor no puede guardarlas. Tus datos no se enviarán como publicación normal.
+      </p>
+    }
+
     <div class="mb-4">
       <label for="product-title" class="mb-2 block text-sm font-medium text-gray-900">
         Nombre del producto
@@ -51,7 +98,7 @@
     </div>
 
     <p class="mb-4 text-xs text-gray-500">
-      Por ahora el servidor guarda el título, la descripción y el precio. La carga de imágenes y categorías aún no está disponible.
+      El servidor guarda el título, la descripción y el precio de las publicaciones normales. La carga de imágenes y categorías aún no está disponible.
     </p>
 
     @if (publishError) {

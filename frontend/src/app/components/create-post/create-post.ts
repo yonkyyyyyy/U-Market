@@ -14,13 +14,24 @@ export class CreatePost {
   private readonly productService = inject(ProductService);
   private readonly toastService = inject(ToastService);
 
+  publicationType: 'normal' | 'flash' = 'normal';
   title = '';
   description = '';
   price: number | null = null;
   isPublishing = false;
   publishError = '';
 
+  selectPublicationType(type: 'normal' | 'flash'): void {
+    this.publicationType = type;
+    this.publishError = '';
+  }
+
   publish(): void {
+    if (this.publicationType === 'flash') {
+      this.publishError = 'Las ofertas Flash todavía no se pueden guardar. El servidor aún no admite ese tipo de publicación.';
+      return;
+    }
+
     const title = this.title.trim();
     const price = Number(this.price);
 
@@ -38,6 +49,7 @@ export class CreatePost {
       precio: price
     }).subscribe({
       next: () => {
+        this.publicationType = 'normal';
         this.title = '';
         this.description = '';
         this.price = null;
