@@ -35,6 +35,10 @@ public class Producto {
 	@Column(length = 80)
 	private String categoria;
 
+	/** Campus de entrega; se usa para el cruce espacial con las demandas. */
+	@Column(length = 80)
+	private String campus;
+
 	// Unidades disponibles. Se descuenta con UPDATE condicional (ver ProductoRepository.descontarStock).
 	@Column(nullable = false, columnDefinition = "INTEGER NOT NULL DEFAULT 1")
 	private Integer stock = 1;

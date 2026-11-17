@@ -50,8 +50,24 @@
         class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-3 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500" />
     </div>
 
+    <div class="mb-5 max-w-xs">
+      <label for="product-campus" class="mb-2 block text-sm font-medium text-gray-900">
+        Campus de entrega
+      </label>
+      <select
+        id="product-campus"
+        name="campus"
+        [(ngModel)]="campus"
+        class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-3 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500">
+        <option value="">Sin campus específico</option>
+        @for (option of campuses; track option) {
+          <option [value]="option">{{ option }}</option>
+        }
+      </select>
+    </div>
+
     <p class="mb-4 text-xs text-gray-500">
-      Por ahora el servidor guarda el título, la descripción y el precio. La carga de imágenes y categorías aún no está disponible.
+      Por ahora el servidor guarda el título, la descripción, el precio y el campus. La carga de imágenes y categorías aún no está disponible.
     </p>
 
     @if (publishError) {

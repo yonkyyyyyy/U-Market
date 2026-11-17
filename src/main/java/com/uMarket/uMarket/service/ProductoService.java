@@ -7,6 +7,7 @@ import com.uMarket.uMarket.dto.StockUpdateEventDTO;
 import com.uMarket.uMarket.dto.TareaPesada;
 import com.uMarket.uMarket.enums.EstadoModeracion;
 import com.uMarket.uMarket.enums.ModerationStatus;
+import com.uMarket.uMarket.event.ProductoActivadoEvent;
 import com.uMarket.uMarket.exception.ContenidoInapropiadoException;
 import com.uMarket.uMarket.exception.ResourceNotFoundException;
 import com.uMarket.uMarket.exception.StockInsuficienteException;
@@ -149,6 +150,7 @@ public class ProductoService {
 		producto.setDescripcion(request.descripcion());
 		producto.setPrecio(request.precio());
 		producto.setCategoria(normalizarCategoria(request.categoria()));
+		producto.setCampus(normalizarCampus(request.campus()));
 		// Nace BLOQUEADA: no es visible hasta que el pipeline asíncrono la resuelva.
 		producto.setEstado(ESTADO_PENDIENTE);
 		producto.setCreatedAt(LocalDateTime.now());
@@ -181,12 +183,17 @@ public class ProductoService {
 	public ProductoDto actualizar(Long id, Usuario usuario, ProductoRequest request) {
 		Producto producto = obtenerEntidad(id);
 		verificarPropietario(producto, usuario);
+		String estadoAnterior = producto.getEstado();
 		// Tarea IA: también se revisa el texto al EDITAR (antes se podía esquivar el filtro).
 		ResultadoTexto texto = revisarTexto(request.titulo(), request.descripcion(), usuario, id);
 		producto.setTitulo(request.titulo().trim());
 		producto.setDescripcion(request.descripcion());
 		producto.setPrecio(request.precio());
 		producto.setCategoria(normalizarCategoria(request.categoria()));
+		// Si el cliente no envía campus (clientes antiguos), se conserva el actual.
+		if (request.campus() != null) {
+			producto.setCampus(normalizarCampus(request.campus()));
+		}
 		// El estado de un producto aún no aprobado lo manda la moderación: no se puede
 		// "activar" a mano uno PENDIENTE o RECHAZADO.
 		if (!ESTADO_PENDIENTE.equals(producto.getEstado()) && !ESTADO_RECHAZADO.equals(producto.getEstado())) {
@@ -194,6 +201,12 @@ public class ProductoService {
 		}
 		Producto guardado = productoRepository.save(producto);
 		registrarLogTexto(guardado, usuario, texto);
+
+		// Demanda inversa: reactivar una publicación por edición también debe
+		// buscar demandas compatibles (mismo criterio que recalcularEstado).
+		if (!ESTADO_ACTIVO.equals(estadoAnterior) && ESTADO_ACTIVO.equals(guardado.getEstado())) {
+			eventPublisher.publishEvent(new ProductoActivadoEvent(guardado.getId()));
+		}
 		return ProductoDto.from(guardado);
 	}
 
@@ -324,8 +337,16 @@ public class ProductoService {
 		if (producto == null) {
 			return;
 		}
-		producto.setEstado(derivarEstado(imagenEnRevisionRepository.findByProductoId(productoId)));
+		String estadoAnterior = producto.getEstado();
+		String nuevoEstado = derivarEstado(imagenEnRevisionRepository.findByProductoId(productoId));
+		producto.setEstado(nuevoEstado);
 		productoRepository.save(producto);
+
+		// Demanda inversa: solo cuando la publicación pasa a ACTIVO se buscan
+		// demandas compatibles (campus + tags) y se alerta a sus autores.
+		if (!ESTADO_ACTIVO.equals(estadoAnterior) && ESTADO_ACTIVO.equals(nuevoEstado)) {
+			eventPublisher.publishEvent(new ProductoActivadoEvent(productoId));
+		}
 	}
 
 	/**
@@ -369,6 +390,13 @@ public class ProductoService {
 			return null;
 		}
 		return categoria.trim().toUpperCase(Locale.ROOT);
+	}
+
+	private String normalizarCampus(String campus) {
+		if (campus == null || campus.isBlank()) {
+			return null;
+		}
+		return campus.trim();
 	}
 
 	private String normalizarEstado(String estado) {

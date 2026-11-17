@@ -7,6 +7,7 @@ import com.uMarket.uMarket.dto.StockUpdateEventDTO;
 import com.uMarket.uMarket.dto.TareaPesada;
 import com.uMarket.uMarket.enums.EstadoModeracion;
 import com.uMarket.uMarket.enums.ModerationStatus;
+import com.uMarket.uMarket.event.ProductoActivadoEvent;
 import com.uMarket.uMarket.exception.ContenidoInapropiadoException;
 import com.uMarket.uMarket.exception.ResourceNotFoundException;
 import com.uMarket.uMarket.exception.StockInsuficienteException;
@@ -327,6 +328,23 @@ class ProductoServiceTest {
 
 		assertThat(result.precio()).isEqualByComparingTo("79.90");
 		assertThat(result.estado()).isEqualTo("PAUSADO");
+	}
+
+	@Test
+	void actualizarAActivoPublicaEventoDeDemandaInversa() {
+		Usuario dueno = usuario(1L, "ana@utp.edu.pe");
+		Producto producto = producto(1L, dueno);
+		producto.setEstado("PAUSADO");
+		when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
+		when(openAIModeracionService.analizar(any(String.class)))
+				.thenReturn(moderacion(ModerationStatus.APPROVED));
+		when(productoRepository.save(any(Producto.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+		ProductoRequest request = new ProductoRequest("Calculadora Casio", "fx-991 CW", new BigDecimal("79.90"), null, "ACTIVO");
+
+		productoService.actualizar(1L, dueno, request);
+
+		verify(eventPublisher).publishEvent(any(ProductoActivadoEvent.class));
 	}
 
 	@Test

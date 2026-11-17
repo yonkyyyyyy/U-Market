@@ -73,6 +73,18 @@
           placeholder="Modelo, edición, estado o cualquier detalle que ayude."></textarea>
       </div>
 
+      <div class="form-field">
+        <label for="request-tags">Etiquetas <span class="label-note">OPCIONAL</span></label>
+        <input
+          id="request-tags"
+          name="tags"
+          type="text"
+          maxlength="400"
+          [(ngModel)]="tags"
+          placeholder="cálculo, casio, primer ciclo">
+        <p class="field-hint">Sepáralas con comas. Ayudan a que quien publique algo parecido te encuentre.</p>
+      </div>
+
       <div class="form-row">
         <div class="form-field">
           <label for="request-budget">Presupuesto máximo <span class="label-note">OPCIONAL</span></label>
@@ -100,7 +112,7 @@
       </div>
 
       <p class="form-note">
-        La categoría se guarda en el servidor. Campus y vigencia se muestran solo durante esta sesión.
+        Categoría, campus y etiquetas se guardan en el servidor. La vigencia se muestra solo durante esta sesión.
       </p>
 
       <footer class="request-dialog__actions">

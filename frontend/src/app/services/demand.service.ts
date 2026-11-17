@@ -7,6 +7,8 @@ export interface DemandRequest {
   descripcion: string;
   presupuestoEstimado: number | null;
   categoria: string;
+  campus?: string;
+  tags?: string[];
 }
 
 export interface Demand {
@@ -15,6 +17,8 @@ export interface Demand {
   descripcion: string | null;
   presupuestoEstimado: number | null;
   categoria: string | null;
+  campus?: string | null;
+  tags?: string[];
   estado: string;
   fechaCreacion: string | null;
   usuarioId: number;

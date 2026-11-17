@@ -14,8 +14,8 @@
   <div class="wall-note" role="note">
     <span class="wall-note__icon" aria-hidden="true">i</span>
     <p>
-      Las solicitudes y su categoría se guardan en el servidor. Campus y vigencia son datos temporales
-      del frontend hasta que la API los admita.
+      La categoría, el campus y las etiquetas se guardan en el servidor para cruzar ofertas y demandas.
+      La vigencia sigue siendo un dato temporal del frontend.
     </p>
   </div>
 
@@ -133,6 +133,13 @@
             <h3>{{ demand.titulo }}</h3>
             @if (demand.descripcion) {
               <p class="demand-description">{{ demand.descripcion }}</p>
+            }
+            @if (demand.tags?.length) {
+              <div class="demand-tags">
+                @for (tag of demand.tags; track tag) {
+                  <span class="keyword-tag">#{{ tag }}</span>
+                }
+              </div>
             }
             <div class="demand-card__details">
               <span>

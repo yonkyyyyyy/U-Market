@@ -57,6 +57,7 @@ export class DemandRequestForm {
   presupuesto: string | number | null = '';
   categoria = '';
   campus = '';
+  tags = '';
   vigencia = 7;
 
   submit(): void {
@@ -76,12 +77,23 @@ export class DemandRequestForm {
         titulo: this.titulo.trim(),
         descripcion: this.descripcion.trim(),
         presupuestoEstimado: parsedBudget,
-        categoria: this.categoria.toLocaleUpperCase('es')
+        categoria: this.categoria.toLocaleUpperCase('es'),
+        campus: this.campus,
+        tags: this.parseTags()
       },
       category: this.categoria,
       campus: this.campus,
       validForDays: this.vigencia
     });
+  }
+
+  private parseTags(): string[] {
+    const tags = this.tags
+      .split(',')
+      .map(tag => tag.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLocaleLowerCase('es'))
+      .filter(tag => tag.length > 0);
+
+    return [...new Set(tags)].slice(0, 10);
   }
 
   closeOnBackdrop(event: MouseEvent): void {
