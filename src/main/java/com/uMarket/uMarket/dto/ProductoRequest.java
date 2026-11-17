@@ -21,14 +21,6 @@ public record ProductoRequest(
 		@Size(max = 80, message = "La categoría no debe superar los 80 caracteres")
 		String categoria,
 
-		String estado,
-
-		@Size(max = 80, message = "El campus no debe superar los 80 caracteres")
-		String campus
+		String estado
 ) {
-
-	/** Constructor de compatibilidad para los clientes que aún no envían campus. */
-	public ProductoRequest(String titulo, String descripcion, BigDecimal precio, String categoria, String estado) {
-		this(titulo, descripcion, precio, categoria, estado, null);
-	}
 }

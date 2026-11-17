@@ -1,13 +1,8 @@
 package com.uMarket.uMarket.controller;
 
-import com.uMarket.uMarket.dto.BusquedaNlpResponse;
-import com.uMarket.uMarket.dto.DemandaResponseDTO;
 import com.uMarket.uMarket.dto.ProductoDto;
 import com.uMarket.uMarket.dto.ProductoRequest;
-import com.uMarket.uMarket.model.Producto;
 import com.uMarket.uMarket.security.UsuarioPrincipal;
-import com.uMarket.uMarket.service.BusquedaNlpService;
-import com.uMarket.uMarket.service.EmparejamientoService;
 import com.uMarket.uMarket.service.ProductoService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -34,15 +29,9 @@ import java.util.Map;
 public class ProductoController {
 
 	private final ProductoService productoService;
-	private final EmparejamientoService emparejamientoService;
-	private final BusquedaNlpService busquedaNlpService;
 
-	public ProductoController(ProductoService productoService,
-							  EmparejamientoService emparejamientoService,
-							  BusquedaNlpService busquedaNlpService) {
+	public ProductoController(ProductoService productoService) {
 		this.productoService = productoService;
-		this.emparejamientoService = emparejamientoService;
-		this.busquedaNlpService = busquedaNlpService;
 	}
 
 	@GetMapping
@@ -55,29 +44,10 @@ public class ProductoController {
 		return productoService.listarPorUsuario(principal.getUsuario());
 	}
 
-	/**
-	 * Búsqueda en lenguaje natural: interpreta la consulta (LLM o fallback
-	 * heurístico) y devuelve los productos ACTIVO más relevantes.
-	 */
-	@GetMapping("/buscar")
-	public BusquedaNlpResponse buscar(@RequestParam("q") String consulta) {
-		return busquedaNlpService.buscar(consulta);
-	}
-
 	@GetMapping("/{id}")
 	public ProductoDto obtener(@PathVariable Long id,
 							   @AuthenticationPrincipal UsuarioPrincipal principal) {
 		return productoService.obtener(id, principal.getUsuario());
-	}
-
-	/**
-	 * Demanda inversa: demandas activas compatibles con esta publicación.
-	 * Solo puede consultarlas el dueño del producto.
-	 */
-	@GetMapping("/{id}/demandas-compatibles")
-	public List<DemandaResponseDTO> demandasCompatibles(@PathVariable Long id,
-														@AuthenticationPrincipal UsuarioPrincipal principal) {
-		return emparejamientoService.buscarDemandasCompatiblesParaProducto(id, principal.getUsuario());
 	}
 
 	@PostMapping
@@ -134,18 +104,4 @@ public class ProductoController {
 		response.put("estado", "PENDIENTE");
 		return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
 	}
-
-	/**
-	 * Compra: descuenta {@code cantidad} unidades de forma atomica. 409 si el stock se agoto.
-	 */
-	@PostMapping("/{id}/comprar")
-	public Map<String, Object> comprar(@PathVariable Long id,
-									   @RequestParam(defaultValue = "1") int cantidad,
-									   @AuthenticationPrincipal UsuarioPrincipal principal) {
-		Producto producto = productoService.comprar(id, cantidad, principal.getUsuario());
-		Map<String, Object> response = new HashMap<>();
-		response.put("mensaje", "Compra realizada");
-		response.put("stockRestante", producto.getStock());
-		response.put("estado", producto.getEstado());
-		return response;
-	}}
+}

@@ -6,7 +6,6 @@ export interface ProductRequest {
   titulo: string;
   descripcion: string;
   precio: number;
-  campus?: string;
 }
 
 /**
@@ -26,28 +25,11 @@ export interface Product {
   titulo: string;
   descripcion: string | null;
   precio: number;
-  categoria?: string | null;
-  campus?: string | null;
   estado: string;
   createdAt: string | null;
   usuarioId: number;
   vendedorNombre: string;
   ofertaFlash?: FlashSaleOffer;
-}
-
-export interface SearchInterpretation {
-  palabrasClave: string[];
-  categoria: string | null;
-  campus: string | null;
-  precioMaximo: number | null;
-  tags: string[];
-  origen: 'LLM' | 'HEURISTICA';
-}
-
-export interface SearchResponse {
-  consulta: string;
-  interpretacion: SearchInterpretation;
-  resultados: Product[];
 }
 
 @Injectable({
@@ -62,12 +44,6 @@ export class ProductService {
     return this.http.get<Product[]>(this.productsUrl, {
       params: { estado: 'DISPONIBLE' }
     }).pipe(tap(products => this.products.set(products)));
-  }
-
-  search(query: string): Observable<SearchResponse> {
-    return this.http.get<SearchResponse>(`${this.productsUrl}/buscar`, {
-      params: { q: query }
-    });
   }
 
   create(request: ProductRequest): Observable<Product> {

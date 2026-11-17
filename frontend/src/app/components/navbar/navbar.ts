@@ -1,10 +1,9 @@
-import { Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
-import { inject, signal, computed } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
-  imports: [RouterLink],
+  imports: [RouterLink, RouterLinkActive],
   selector: 'app-navbar',
   styleUrl: './navbar.css',
   templateUrl: './navbar.html',
@@ -15,7 +14,7 @@ export class Navbar {
   protected readonly isAdmin = computed(() => this.authService.isAdmin());
 
   protected toggleMenu(): void {
-    this.isMenuOpen.update((isOpen: boolean) => !isOpen);
+    this.isMenuOpen.update(isOpen => !isOpen);
   }
 
   protected closeMenu(): void {

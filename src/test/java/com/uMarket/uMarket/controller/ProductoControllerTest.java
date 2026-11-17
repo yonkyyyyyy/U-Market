@@ -1,16 +1,12 @@
 package com.uMarket.uMarket.controller;
 
-import com.uMarket.uMarket.dto.BusquedaNlpResponse;
-import com.uMarket.uMarket.dto.InterpretacionBusqueda;
 import com.uMarket.uMarket.dto.ProductoDto;
 import com.uMarket.uMarket.dto.ProductoRequest;
 import com.uMarket.uMarket.exception.ResourceNotFoundException;
 import com.uMarket.uMarket.model.Usuario;
 import com.uMarket.uMarket.security.UsuarioPrincipal;
 import com.uMarket.uMarket.security.JwtService;
-import com.uMarket.uMarket.service.BusquedaNlpService;
 import com.uMarket.uMarket.service.CustomUserDetailsService;
-import com.uMarket.uMarket.service.EmparejamientoService;
 import com.uMarket.uMarket.service.ProductoService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -47,12 +43,6 @@ class ProductoControllerTest {
 
 	@MockitoBean
 	private ProductoService productoService;
-
-	@MockitoBean
-	private EmparejamientoService emparejamientoService;
-
-	@MockitoBean
-	private BusquedaNlpService busquedaNlpService;
 
 	@MockitoBean
 	private JwtService jwtService;
@@ -93,26 +83,6 @@ class ProductoControllerTest {
 				.andExpect(status().isOk());
 
 		verify(productoService).listarTodos("ACTIVO");
-	}
-
-	@Test
-	void buscarEnLenguajeNaturalDevuelveInterpretacionYResultados() throws Exception {
-		InterpretacionBusqueda interpretacion = new InterpretacionBusqueda(
-				List.of("calculadora"), "Tecnología", "Lima Este", new BigDecimal("100"),
-				List.of(), "LLM");
-		when(busquedaNlpService.buscar("calculadora barata en Lima Este"))
-				.thenReturn(new BusquedaNlpResponse("calculadora barata en Lima Este",
-						interpretacion, List.of(productoDto())));
-
-		mockMvc.perform(get("/api/productos/buscar")
-						.param("q", "calculadora barata en Lima Este"))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.interpretacion.categoria").value("Tecnología"))
-				.andExpect(jsonPath("$.interpretacion.campus").value("Lima Este"))
-				.andExpect(jsonPath("$.interpretacion.origen").value("LLM"))
-				.andExpect(jsonPath("$.resultados[0].titulo").value("Calculadora Casio"));
-
-		verify(busquedaNlpService).buscar("calculadora barata en Lima Este");
 	}
 
 	@Test
