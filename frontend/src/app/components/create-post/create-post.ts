@@ -30,6 +30,7 @@ export class CreatePost {
     'Trujillo'
   ];
 
+  publicationType: 'normal' | 'flash' = 'normal';
   title = '';
   description = '';
   price: number | null = null;
