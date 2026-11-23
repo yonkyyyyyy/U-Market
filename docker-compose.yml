@@ -79,9 +79,11 @@ services:
     image: nginx:alpine
     container_name: umarket_nginx
     ports:
-      - "80:80" # Única puerta de acceso pública al sistema
+      - "80:80"   # Redirección a HTTPS
+      - "443:443" # Tráfico seguro HTTPS / WSS
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - frontend-app
       - backend-app
