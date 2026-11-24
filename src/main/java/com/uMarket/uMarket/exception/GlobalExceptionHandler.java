@@ -30,6 +30,11 @@ public class GlobalExceptionHandler {
 		return build(HttpStatus.NOT_FOUND, ex.getMessage());
 	}
 
+	@ExceptionHandler(GeneracionCopyException.class)
+	public ResponseEntity<Map<String, Object>> handleGeneracionCopy(GeneracionCopyException ex) {
+		return build(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+	}
+
 	@ExceptionHandler(AccessDeniedException.class)
 	public ResponseEntity<Map<String, Object>> handleAccessDenied(AccessDeniedException ex) {
 		return build(HttpStatus.FORBIDDEN, "No tienes permisos para realizar esta operación");

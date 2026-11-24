@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { CopywritingService } from '../../services/copywriting.service';
 import { ProductRequest, ProductService } from '../../services/product.service';
 import { ToastService } from '../../services/toast.service';
 
@@ -12,6 +13,7 @@ import { ToastService } from '../../services/toast.service';
 })
 export class CreatePost {
   private readonly productService = inject(ProductService);
+  private readonly copywritingService = inject(CopywritingService);
   private readonly toastService = inject(ToastService);
 
   readonly campuses = [
@@ -34,8 +36,53 @@ export class CreatePost {
   description = '';
   price: number | null = null;
   campus = '';
+  platform = 'Instagram';
+  tone = 'Cercano';
+  targetAudience = '';
+  generatedCopies: string[] = [];
+  isGeneratingCopies = false;
+  copyError = '';
   isPublishing = false;
   publishError = '';
+
+  generateCopies(): void {
+    const title = this.title.trim();
+    if (!title) {
+      this.copyError = 'Escribe el nombre del producto para generar ideas.';
+      return;
+    }
+
+    this.isGeneratingCopies = true;
+    this.copyError = '';
+    this.generatedCopies = [];
+
+    this.copywritingService.generate({
+      titulo: title,
+      descripcion: this.description.trim(),
+      ...(this.price !== null && Number.isFinite(Number(this.price)) && Number(this.price) > 0
+        ? { precio: Number(this.price) }
+        : {}),
+      ...(this.campus ? { campus: this.campus } : {}),
+      plataforma: this.platform,
+      tono: this.tone,
+      ...(this.targetAudience.trim() ? { publicoObjetivo: this.targetAudience.trim() } : {})
+    }).subscribe({
+      next: response => {
+        this.generatedCopies = response.copys;
+        this.isGeneratingCopies = false;
+      },
+      error: (error: unknown) => {
+        this.isGeneratingCopies = false;
+        this.copyError = error instanceof HttpErrorResponse && error.status === 401
+          ? 'Inicia sesión para generar copys.'
+          : this.getErrorMessage(error, 'No se pudieron generar ideas. Inténtalo de nuevo.');
+      }
+    });
+  }
+
+  useCopy(copy: string): void {
+    this.description = copy;
+  }
 
   publish(): void {
     const title = this.title.trim();
@@ -74,7 +121,10 @@ export class CreatePost {
     });
   }
 
-  private getErrorMessage(error: unknown): string {
+  private getErrorMessage(
+    error: unknown,
+    fallback = 'No se pudo publicar el producto. Revisa tu conexión e inténtalo de nuevo.'
+  ): string {
     if (error instanceof HttpErrorResponse && error.status === 401) {
       return 'Inicia sesión para publicar un producto.';
     }
@@ -83,6 +133,10 @@ export class CreatePost {
       return error.error.message;
     }
 
-    return 'No se pudo publicar el producto. Revisa tu conexión e inténtalo de nuevo.';
+    if (error instanceof HttpErrorResponse && typeof error.error?.detail === 'string') {
+      return error.error.detail;
+    }
+
+    return fallback;
   }
 }
